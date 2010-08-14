@@ -3,12 +3,14 @@
 """pyyaru реализует Python-интерфейс к API блог-сервиса Я.ру http://wow.ya.ru."""
 
 import logging
+import os
 from urllib2 import urlopen, Request, URLError
 from lxml import etree
 from __init__ import VERSION
 
 LOG_LEVEL = logging.ERROR
 
+# Соотнонения URN-типов и объектов
 URN_TYPES = {
     'person': 'yaPerson',
     'entry': 'yaEntry',
@@ -21,6 +23,16 @@ NAMESPACES = {
 }
 
 ACCESS_TOKEN = None
+
+# Если в директории бибилиотеки лежит файл token, то берем реквизиты из него
+token_filepath = '%s/token' % os.path.dirname(os.path.realpath(__file__))
+if os.path.exists(token_filepath):
+    token_file = open(token_filepath, 'rb')
+    token = eval(token_file.read())
+    if isinstance(token, dict):
+        ACCESS_TOKEN = token['access_token']
+    token_file.close()
+     
 
 logging.basicConfig(level=LOG_LEVEL, format="** %(asctime)s - %(name)s - %(levelname)s\n%(message)s\n")
 
@@ -95,7 +107,12 @@ class yaBase(object):
                 tagcontent = usedict    
             else:
                 tagcontent = el.text
-                
+            
+            if isinstance(tagcontent, str):
+                tagcontent = tagcontent.strip()
+                if tagcontent == '':
+                    tagcontent = None
+            
             yield {tagname: tagcontent}
 
     @property
@@ -116,6 +133,7 @@ class yaBase(object):
         resource_data = yaResource(self.id).get()
         if resource_data is not None:
             self._parse(resource_data)
+        return self
 
 
 class yaPerson(yaBase):
@@ -237,7 +255,7 @@ class yaResource(object):
         3. URI (н.п. /me/)
         
         """
-        self.__logger.info('Resource "%s" requested.' % resource_name)
+        self.__logger.debug('Resource defined as "%s".' % resource_name)
         
         resource_name = resource_name.lstrip('/')
         url = resource_name
@@ -252,11 +270,15 @@ class yaResource(object):
     def __open_url(self, url, data=None):
         """Открывает URL, опционально используя токен авторизации.
         
-        Реализована упрощенная схема, без взаимодействи с OAuth-сервером.
-        Для аутентификации необходимо занести словарь CREDENTIALS, где в
-        ключе 'access_token' указать токен, полученный на странице
-        
+        Реализована упрощенная схема, без взаимодействия с OAuth-сервером.
+        Для аутентификации необходимо задать ACCESS_TOKEN равным токену, 
+        полученному на странице
         https://oauth.yandex.ru/authorize?client_id=25df5dd8e3064e188fbbf56f7c667d5f&response_type=code
+        Внимание: для получения токена по приведенному ниже адресу 
+        необходимо быть авторизованным на Яндексе.
+        
+        Полученный файл (token) можно положить рядом с pyyaru.py, в таком случае 
+        реквизиты будут взяты из него автоматически.
         
         """
         headers = { 'User-Agent': 'pyyaru %s' % '.'.join(map(str, VERSION)) }
@@ -300,18 +322,20 @@ class yaResource(object):
         в подходящий ya-объект.
         
         """
-        resource_data = self.get()
-        resource_type = resource_data[0]
-        
         obj = None
-        if resource_type in URN_TYPES.keys():
-            self.__logger.debug('Resource type "%s" is a valid resource. Now spawning the appropriate object "%s".' % (resource_type, URN_TYPES[resource_type]))
-            obj = globals()[URN_TYPES[resource_type]](None)
-            obj._parse(resource_data)
-        elif resource_type == None:
-            self.__logger.warning('Resource type is none')
-        else:
-            self.__logger.error('Resource type "%s" is unknown' % resource_type)
+        resource_data = self.get()
+        
+        if resource_data is not None:
+            resource_type = resource_data[0]
+            
+            if resource_type in URN_TYPES.keys():
+                self.__logger.debug('Resource type "%s" is a valid resource. Now spawning the appropriate object "%s".' % (resource_type, URN_TYPES[resource_type]))
+                obj = globals()[URN_TYPES[resource_type]](None)
+                obj._parse(resource_data)
+            elif resource_type == None:
+                self.__logger.warning('Resource type is none')
+            else:
+                self.__logger.error('Resource type "%s" is unknown' % resource_type)
             
         return obj
                 

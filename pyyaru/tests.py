@@ -24,11 +24,16 @@ class yaPersonCheck(unittest.TestCase):
         """Крушение без указания первого параметра конструктора."""
         self.assertRaises(TypeError, pyyaru.yaPerson)
         
+    def test_chaining_load(self):
+        """Загрузка в цепи."""
+        person = pyyaru.yaPerson(resource_url_person).get()
+        self.assertEqual(person.id, resource_urn_person)
+        
     def test_lazy_load_on_attrib_access(self):
         """Автоматическое наполнение объекта при обращении к
         отсутствующему свойству."""
         person = pyyaru.yaPerson(resource_url_person)
-        b = person.city
+        city = person.city
         self.assertEqual(person.id, resource_urn_person)
         
 
