@@ -10,11 +10,17 @@ from __init__ import VERSION
 
 LOG_LEVEL = logging.ERROR
 
+API_SERVER = 'https://api-yaru.yandex.ru'
+
+URN_PREFIX = 'urn:ya.ru:'
+
 # Соотнонения URN-типов и объектов
 URN_TYPES = {
     'person': 'yaPerson',
+    'persons': 'yaPersons',
     'entry': 'yaEntry',
     'club': 'yaClub',
+    'clubs': 'yaClubs',
    }
 
 NAMESPACES = { 
@@ -36,7 +42,9 @@ if os.path.exists(token_filepath):
 
 logging.basicConfig(level=LOG_LEVEL, format="** %(asctime)s - %(name)s - %(levelname)s\n%(message)s\n")
 
+
 class Logger(object):
+    """Класс логирования."""
     
     def __init__(self):
         self._logger = None
@@ -47,7 +55,9 @@ class Logger(object):
             
         return self._logger
 
+
 class yaBase(object):
+    """Класс, осуществляющий базовое представляющий ресурса Я.ру в виде объека pyyaru."""
     
     __logger = Logger()
     
@@ -65,7 +75,10 @@ class yaBase(object):
         if self.__parsed == False:
             self.get()
     
-        return self.__dict__[name]
+        try:
+            return self.__dict__[name]
+        except KeyError as e:
+            raise AttributeError(e)
     
     def __str__(self):
         """Трансляцией объекта в строку является идентификатор объекта."""
@@ -116,17 +129,9 @@ class yaBase(object):
             yield {tagname: tagcontent}
 
     @property
-    def __URN(self):
-        """Свойство уникальный идентификатор ресурса, собирается
-        из базового NID и варьирующегося в зависимости от типа класса NSS.
-         
-        """
-        urn = None
-        for urn_name, class_name in URN_TYPES.iteritems():
-            if class_name == self.__class__.__name__:
-                urn = urn_name
-                break
-        return urn
+    def _type(self):
+        """Свойство тип ресурса."""
+        return self.__class__.__name__.lstrip('ya').lower()
         
     def get(self):
         """Запрашивает объект с сервера и направляет его в парсер."""
@@ -137,6 +142,7 @@ class yaBase(object):
 
 
 class yaPerson(yaBase):
+    """Класс описывает ресурс пользователя Я.ру (профиль)."""
 
     def rename(self, new_name):
         """Смена имени пользователя. Под капотом происходит создание
@@ -167,7 +173,12 @@ class yaPerson(yaBase):
         raise NotImplementedError('This one is not yet implemented.')
 
 
+class yaPersons(yaBase):
+    """Класс описывает ресурс списка пользователий (н.п. список друзей)."""
+
+
 class yaClub(yaBase):
+    """Класс описывает ресурс клуба."""
     
     def add_news(self, news_text):
         """Публикация новости клуба. Под капотом происходит создание
@@ -198,7 +209,12 @@ class yaClub(yaBase):
         raise NotImplementedError('This one is not yet implemented.')
 
 
+class yaClubs(yaBase):
+    """Класс описывает ресурс списка клубов (н.п. те, в которых состоит пользователь."""
+
+
 class yaEntry(yaBase):
+    """Класс описывает ресурс сообщения (публикации)."""
     
     TYPES = [
         # Записи
@@ -241,9 +257,8 @@ class yaEntry(yaBase):
 
        
 class yaResource(object):
+    """Класс получает абстрактный ресурс Я.ру и/или создает на его основе объект pyyaru."""
     
-    API_SERVER = 'https://api-yaru.yandex.ru'
-    URN_PREFIX = 'urn:ya.ru:'
     __logger = Logger()
     
     def __init__(self, resource_name):
@@ -259,11 +274,11 @@ class yaResource(object):
         
         resource_name = resource_name.lstrip('/')
         url = resource_name
-        if not resource_name.startswith(self.API_SERVER):
-            if resource_name.startswith(self.URN_PREFIX):
-                url = '%s/resource?id=%s' % (self.API_SERVER, resource_name)
+        if not resource_name.startswith(API_SERVER):
+            if resource_name.startswith(URN_PREFIX):
+                url = '%s/resource?id=%s' % (API_SERVER, resource_name)
             else:
-                url = '%s/%s' % (self.API_SERVER, resource_name)
+                url = '%s/%s' % (API_SERVER, resource_name)
                 
         self.url = url
         
@@ -291,7 +306,7 @@ class yaResource(object):
         try:
             urlobj = urlopen(Request(url, data=data, headers=headers))
         except URLError as e:
-            self.__logger.error('URL open failed: %s' % e)
+            self.__logger.error(' Failed to open "%s".\n Error: "%s"' % (url, e))
         
         self.urlobj = urlobj 
         
