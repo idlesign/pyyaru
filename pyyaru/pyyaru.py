@@ -43,6 +43,16 @@ if os.path.exists(token_filepath):
 logging.basicConfig(level=LOG_LEVEL, format="** %(asctime)s - %(name)s - %(levelname)s\n%(message)s\n")
 
 
+class yaError(Exception):
+    """Базовый класс ошибок модуля."""
+    pass
+
+
+class yaObjectTypeMismatchError(yaError):
+    """Ошибка несоответствия класса pyyaru типу данных, заявленному ресурсом."""
+    pass
+
+
 class Logger(object):
     """Класс логирования."""
     
@@ -103,6 +113,11 @@ class yaBase(object):
         root = etree.fromstring(resource_data[1])
         for attrib in self.__parse_recursion(root):
             self.__dict__[attrib.keys()[0]] = attrib.values()[0]
+        
+        self.__dict__['links'] = {}
+        for link in root.xpath('//a:link | //y:link', namespaces=NAMESPACES):
+            self.__dict__['links'][link.attrib['rel']] = link.attrib['href']
+            
         self.__parsed = True
      
     def __parse_recursion(self, root, usedict=None):
@@ -113,20 +128,22 @@ class yaBase(object):
         """
         for el in root:
             tagname = el.tag.replace('{%s}' % el.nsmap[None], '')
-            if len(el) > 0:
-                usedict = []
-                for subel in self.__parse_recursion(el, usedict):
-                    usedict.append(subel)
-                tagcontent = usedict    
-            else:
-                tagcontent = el.text
             
-            if isinstance(tagcontent, str):
-                tagcontent = tagcontent.strip()
-                if tagcontent == '':
-                    tagcontent = None
-            
-            yield {tagname: tagcontent}
+            if tagname != 'link':
+                if len(el) > 0:
+                    usedict = []
+                    for subel in self.__parse_recursion(el, usedict):
+                        usedict.append(subel)
+                    tagcontent = usedict    
+                else:
+                    tagcontent = el.text
+                
+                if isinstance(tagcontent, str):
+                    tagcontent = tagcontent.strip()
+                    if tagcontent == '':
+                        tagcontent = None
+                
+                yield {tagname: tagcontent}
 
     @property
     def _type(self):
@@ -137,7 +154,11 @@ class yaBase(object):
         """Запрашивает объект с сервера и направляет его в парсер."""
         resource_data = yaResource(self.id).get()
         if resource_data is not None:
-            self._parse(resource_data)
+            if resource_data[0] == self._type:
+                self._parse(resource_data)
+            else:
+                raise yaObjectTypeMismatchError('Data type "%s" defined by resource mismatches pyyaru object "%s"' 
+                       % (resource_data[0], self.__class__.__name__) )
         return self
 
 

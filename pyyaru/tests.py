@@ -50,6 +50,16 @@ class yaPersonCheck(unittest.TestCase):
         person = pyyaru.yaPerson(resource_uri_me).get()
         self.assertNotEqual(person.id, resource_uri_me)
         
+    def test_error_typemismatch(self):
+        """Крушение в случае несоответствия типа объекта pyyaru."""
+        not_a_person = pyyaru.yaPerson(resource_url_entry)
+        self.assertRaises(pyyaru.yaObjectTypeMismatchError, not_a_person.get)
+        
+    def test_links_list_exists(self):
+        """Существования списка со ссылками для данного ресурса"""
+        person = pyyaru.yaPerson(resource_url_person).get()
+        self.assertEqual(person.links.has_key('self'), True)
+        
 
 class yaResourceCheck(unittest.TestCase):    
          
