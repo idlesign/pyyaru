@@ -6,6 +6,7 @@ import logging
 import os
 from urllib2 import urlopen, Request, URLError
 from lxml import etree
+from collections import defaultdict
 from __init__ import VERSION
 
 LOG_LEVEL = logging.ERROR
@@ -74,14 +75,15 @@ class yaBase(object):
     def __init__(self, id, lazy=False):
         self.__parsed = False
         self.id = id
+        self._type = self.__class__.__name__.lstrip('ya').lower()
         if lazy:
             self.get()
     
     def __getattr__(self, name):
         """При обращении к любому из свойств объекта, в случае, если данные
-        еще не были загружены с ресурса,
+        еще не были загружены с ресурса, происходит загрузка.
         
-        """ 
+        """
         if self.__parsed == False:
             self.get()
     
@@ -112,7 +114,7 @@ class yaBase(object):
         """
         root = etree.fromstring(resource_data[1])
         for attrib in self.__parse_recursion(root):
-            self.__dict__[attrib.keys()[0]] = attrib.values()[0]
+            self.__dict__[attrib[0]] = attrib[1]
         
         self.__dict__['links'] = {}
         for link in root.xpath('//a:link | //y:link', namespaces=NAMESPACES):
@@ -122,7 +124,7 @@ class yaBase(object):
      
     def __parse_recursion(self, root, usedict=None):
         """Итератор, проходящий по xml дереву и составляющий списки,
-        которые в последстии станут свойствами объекта.
+        которые в последствии станут свойствами объекта.
         Выбрасывает пары ключ-значение.
         
         """
@@ -131,10 +133,10 @@ class yaBase(object):
             
             if tagname != 'link':
                 if len(el) > 0:
-                    usedict = []
+                    usedict = defaultdict(list)
                     for subel in self.__parse_recursion(el, usedict):
-                        usedict.append(subel)
-                    tagcontent = usedict    
+                        usedict[subel[0]].append(subel[1])
+                    tagcontent = usedict
                 else:
                     tagcontent = el.text
                 
@@ -143,12 +145,7 @@ class yaBase(object):
                     if tagcontent == '':
                         tagcontent = None
                 
-                yield {tagname: tagcontent}
-
-    @property
-    def _type(self):
-        """Свойство тип ресурса."""
-        return self.__class__.__name__.lstrip('ya').lower()
+                yield [tagname, tagcontent]
         
     def get(self):
         """Запрашивает объект с сервера и направляет его в парсер."""

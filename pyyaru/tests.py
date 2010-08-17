@@ -56,7 +56,7 @@ class yaPersonCheck(unittest.TestCase):
         self.assertRaises(pyyaru.yaObjectTypeMismatchError, not_a_person.get)
         
     def test_links_list_exists(self):
-        """Существования списка со ссылками для данного ресурса"""
+        """Существование списка со ссылками для данного ресурса"""
         person = pyyaru.yaPerson(resource_url_person).get()
         self.assertEqual(person.links.has_key('self'), True)
         
