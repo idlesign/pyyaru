@@ -106,7 +106,22 @@ class yaBase(object):
         for attribute in self.__dict__:
             if not attribute.startswith('_'):
                 yield (attribute, self.__dict__[attribute])
-                
+    
+    def _parse_list_to_objects(self, resource_data):
+        """Парсит xml-список, полученный с ресурса.
+        Создает новые объекты соответствующего класса по данным ресурса.
+        Используется для обработки данных ресурсов, содержащих перечисления
+        других ресурсов (н.п. clubs, persons).
+        
+        """
+        super(self.__class__, self)._parse(resource_data)
+        root = etree.fromstring(resource_data[1])
+        for item in root.xpath('//y:%s' % self._type.rstrip('s'), namespaces=NAMESPACES):
+            obj = globals()[self.__class__.__name__.rstrip('s')](None)
+            resource_data = [item.tag, etree.tostring(item, xml_declaration=True, encoding='utf-8')]
+            obj._parse(resource_data)
+            self.objects.append(obj)
+    
     def _parse(self, resource_data):
         """Запускает механизм парсинга xml, полученного с ресурса.
         Дерево xml транслирует в свойства объекта.
@@ -117,7 +132,7 @@ class yaBase(object):
             self.__dict__[attrib[0]] = attrib[1]
         
         self.__dict__['links'] = {}
-        for link in root.xpath('//a:link | //y:link', namespaces=NAMESPACES):
+        for link in root.xpath('/*/a:link | /*/y:link', namespaces=NAMESPACES):
             self.__dict__['links'][link.attrib['rel']] = link.attrib['href']
             
         self.__parsed = True
@@ -192,7 +207,20 @@ class yaPerson(yaBase):
 
 
 class yaPersons(yaBase):
-    """Класс описывает ресурс списка пользователий (н.п. список друзей)."""
+    """Класс описывает ресурс списка пользователий (н.п. список друзей).
+    В случае удачного свершения, свойство objects объекта класса будет заполнено 
+    объектами класса yaPerson, каждый из которых описывает одиного пользователя 
+    из списка.
+    
+    """
+    objects = []
+    
+    def _parse(self, resource_data):
+        """Заменяем вызов _parse вызовом _parse_list_to_objects для
+        получения списка объектов.
+        
+        """
+        self._parse_list_to_objects(resource_data)
 
 
 class yaClub(yaBase):
@@ -228,7 +256,19 @@ class yaClub(yaBase):
 
 
 class yaClubs(yaBase):
-    """Класс описывает ресурс списка клубов (н.п. те, в которых состоит пользователь."""
+    """Класс описывает ресурс списка клубов (н.п. те, в которых состоит пользователь.
+    В случае удачного свершения, свойство objects объекта класса будет заполнено
+    объектами класса yaClub, каждый из которых описывает один клуб из списка.
+    
+    """
+    objects = []
+    
+    def _parse(self, resource_data):
+        """Заменяем вызов _parse вызовом _parse_list_to_objects для
+        получения списка объектов.
+        
+        """
+        self._parse_list_to_objects(resource_data)
 
 
 class yaEntry(yaBase):

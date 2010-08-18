@@ -9,14 +9,14 @@ resource_uri_me = '/me/'
 
 resource_urn_person = 'urn:ya.ru:person/153990'
 resource_url_person = 'https://api-yaru.yandex.ru/person/153990/'
-resource_url_persons = 'https://api-yaru.yandex.ru/person/153990/friend/'
+resource_url_persons = 'https://api-yaru.yandex.ru/person/96845657/friend/'
 
 resource_urn_entry = 'urn:ya.ru:post/153990/219'
 resource_url_entry = 'https://api-yaru.yandex.ru/person/153990/post/219/'
 
 resource_urn_club = 'urn:ya.ru:club/4611686018427391272'
 resource_url_club = 'https://api-yaru.yandex.ru/club/4611686018427391272/'
-resource_url_clubs = 'https://api-yaru.yandex.ru/person/153990/club/'
+resource_url_clubs = 'https://api-yaru.yandex.ru/person/96845657/club/'
 
 class yaPersonCheck(unittest.TestCase):
     
@@ -56,10 +56,26 @@ class yaPersonCheck(unittest.TestCase):
         self.assertRaises(pyyaru.yaObjectTypeMismatchError, not_a_person.get)
         
     def test_links_list_exists(self):
-        """Существование списка со ссылками для данного ресурса"""
+        """Существование списка со ссылками для данного ресурса."""
         person = pyyaru.yaPerson(resource_url_person).get()
         self.assertEqual(person.links.has_key('self'), True)
         
+
+class yaClubsCheck(unittest.TestCase):
+
+    def test_objects_spawn(self):
+        """Создание объектов класса yaClub для элементов списка clubs."""
+        clubs = pyyaru.yaClubs(resource_url_clubs).get()
+        self.assertNotEqual(len(clubs.objects), 0)
+
+
+class yaPersonsCheck(unittest.TestCase):
+
+    def test_objects_spawn(self):
+        """Создание объектов класса yaPerson для элементов списка person."""
+        persons = pyyaru.yaPersons(resource_url_persons).get()
+        self.assertNotEqual(len(persons.objects), 0)
+
 
 class yaResourceCheck(unittest.TestCase):    
          
