@@ -4,6 +4,7 @@
 
 import pyyaru
 import unittest
+import datetime
 
 resource_uri_me = '/me/'
 
@@ -59,7 +60,25 @@ class yaPersonCheck(unittest.TestCase):
         """Существование списка со ссылками для данного ресурса."""
         person = pyyaru.yaPerson(resource_url_person).get()
         self.assertEqual(person.links.has_key('self'), True)
+
+
+class yaEntryCheck(unittest.TestCase):
+    
+    def test_access_property(self):
+        """Проверка существования свойства access."""
+        entry = pyyaru.yaEntry(resource_url_entry)
+        self.assertEqual(entry.access, 'public')
         
+    def test_type_property(self):
+        """Проверка существования свойства type."""
+        entry = pyyaru.yaEntry(resource_url_entry)
+        self.assertEqual(entry.type, 'text')
+        
+    def test_updated_is_datetime(self):
+        """Проверка соответствия свойства updated типу datetime.datetime."""
+        entry = pyyaru.yaEntry(resource_url_entry).get()
+        self.assertEqual(isinstance(entry.updated, datetime.datetime), True)
+
 
 class yaClubsCheck(unittest.TestCase):
 

@@ -4,9 +4,10 @@
 
 import logging
 import os
+import datetime
 from urllib2 import urlopen, Request, URLError
-from lxml import etree
 from collections import defaultdict
+from lxml import etree
 from __init__ import VERSION
 
 LOG_LEVEL = logging.ERROR
@@ -54,6 +55,15 @@ class yaObjectTypeMismatchError(yaError):
     pass
 
 
+class yaEntryTypeUnknownError(yaError):
+    """Ошибка неопознанного типа публикации (yaEntry)."""
+    pass
+
+class yaEntryAccessUnknownError(yaError):
+    """Ошибка неопознанного уровня доступа для публикации (yaEntry)."""
+    pass
+
+
 class Logger(object):
     """Класс логирования."""
     
@@ -68,7 +78,7 @@ class Logger(object):
 
 
 class yaBase(object):
-    """Класс, осуществляющий базовое представляющий ресурса Я.ру в виде объека pyyaru."""
+    """Класс, осуществляющий базовое представление ресурса Я.ру в виде объекта pyyaru."""
     
     __logger = Logger()
     
@@ -110,7 +120,7 @@ class yaBase(object):
     def _parse_list_to_objects(self, resource_data):
         """Парсит xml-список, полученный с ресурса.
         Создает новые объекты соответствующего класса по данным ресурса.
-        Используется для обработки данных ресурсов, содержащих перечисления
+        Используется для обработки ресурсов, содержащих перечисления
         других ресурсов (н.п. clubs, persons).
         
         """
@@ -211,6 +221,7 @@ class yaPersons(yaBase):
     В случае удачного свершения, свойство objects объекта класса будет заполнено 
     объектами класса yaPerson, каждый из которых описывает одиного пользователя 
     из списка.
+    Свойство objects является списком.
     
     """
     objects = []
@@ -259,6 +270,7 @@ class yaClubs(yaBase):
     """Класс описывает ресурс списка клубов (н.п. те, в которых состоит пользователь.
     В случае удачного свершения, свойство objects объекта класса будет заполнено
     объектами класса yaClub, каждый из которых описывает один клуб из списка.
+    Свойство objects является списком.
     
     """
     objects = []
@@ -274,7 +286,7 @@ class yaClubs(yaBase):
 class yaEntry(yaBase):
     """Класс описывает ресурс сообщения (публикации)."""
     
-    TYPES = [
+    _TYPES = [
         # Записи
         'link',             # Ссылка
         'text',             # Текст
@@ -312,6 +324,59 @@ class yaEntry(yaBase):
         'opinion',          # 
         'premoderated',     #
         ]
+    
+    _ACCESS_LEVELS = [
+        'public',  # всем
+        'private', # только мне
+        'friends', # друзьям
+        ]
+    
+    def _set_type(self, entry_type):
+        """Устанавливает тип записи, сверяясь со списком разрешенных типов."""
+        if entry_type in self._TYPES:
+            self._entry_type = entry_type
+        else:
+            raise yaEntryTypeUnknownError('Unable to set unrecognized "%s" entry type.' % entry_type)
+    def _get_type(self):
+        """Возвращает тип записи."""
+        return self._entry_type
+    type = property(_get_type, _set_type) # Методы выше определяют свойство type.
+        
+    def _set_access(self, access_level):
+        """Устанавливает уровень доступа к записи, сверяясь со списком разрешенных уровней."""
+        if access_level in self._ACCESS_LEVELS:
+            self._access = access_level
+        else:
+            raise yaEntryAccessUnknownError('Unable to set unrecognized %s" entry access type.' % access_level)
+    def _get_access(self):
+        """Возвращает уровень доступа к записи."""
+        return self._access
+    access = property(_get_access, _set_access)  # Методы выше определяют свойство access.
+    
+    def _parse(self, resource_data):
+        """Парсит xml-документ с учетом специфики ресурса entry.
+        Утилизирует парсер класса-родителя.
+        
+        """
+        super(self.__class__, self)._parse(resource_data)
+        self.access = self.__dict__['{%s}access' % NAMESPACES['y']]
+        # Мы избавляемся от ненужных атрибутов объекта, созданных парсером класса-родителя.
+        del(self.__dict__['category'])
+        del(self.__dict__['{%s}access' % NAMESPACES['y']])
+        del(self.__dict__['{%s}meta' % NAMESPACES['y']])
+        
+        self.__dict__['updated'] = datetime.datetime.strptime(self.__dict__['updated'], '%Y-%m-%dT%H:%M:%SZ')
+        root = etree.fromstring(resource_data[1])
+        self.__dict__['categories'] = {}
+        for category in root.xpath('/*/a:category', namespaces=NAMESPACES):
+            if category.attrib['scheme'] == 'urn:ya.ru:posttypes':
+                self.type = category.attrib['term']
+            else:
+                self.__dict__['categories'][category.attrib['term']] = category.attrib['scheme']
+                
+    def publish(self):
+        """Публикует сообщение."""
+        raise NotImplementedError('This one is not yet implemented.')
 
        
 class yaResource(object):
@@ -324,7 +389,7 @@ class yaResource(object):
         
         Понимает следующие виды имён:
         1. Полноценный URL (н.п. https://api-yaru.yandex.ru/person/153990/)
-        2. ya-идентификатор (н.п. urn:ya.ru:person/153990)
+        2. ya-идентификатор URN (н.п. urn:ya.ru:person/153990)
         3. URI (н.п. /me/)
         
         """
