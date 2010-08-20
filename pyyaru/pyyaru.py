@@ -359,11 +359,20 @@ class yaEntry(yaBase):
         
         """
         super(self.__class__, self)._parse(resource_data)
+        original_tag = '{%s}original' % NAMESPACES['y']
+        meta_tag = '{%s}meta' % NAMESPACES['y']
+        
         self.access = self.__dict__['{%s}access' % NAMESPACES['y']]
         # Мы избавляемся от ненужных атрибутов объекта, созданных парсером класса-родителя.
         del(self.__dict__['category'])
         del(self.__dict__['{%s}access' % NAMESPACES['y']])
-        del(self.__dict__['{%s}meta' % NAMESPACES['y']])
+        if meta_tag in self.__dict__:
+            del(self.__dict__[meta_tag])
+        if original_tag in self.__dict__:
+            self.original = self.__dict__[original_tag]
+            del(self.__dict__[original_tag])
+        else:
+            self.original = None
         
         self.__dict__['updated'] = datetime.datetime.strptime(self.__dict__['updated'], '%Y-%m-%dT%H:%M:%SZ')
         root = etree.fromstring(resource_data[1])
@@ -446,10 +455,6 @@ class yaResource(object):
             self.__logger.debug('Response Body:\n%s\n%s%s' % ('-----'*4, urlobj_data, '____'*25) )
             
             resource_type = self.urlobj.info().getparam('type')
-            
-            # API багфикс
-            if resource_type == 'blog':
-                resource_type = 'person'
 
             return (resource_type, urlobj_data)
         else:

@@ -14,6 +14,7 @@ resource_url_persons = 'https://api-yaru.yandex.ru/person/96845657/friend/'
 
 resource_urn_entry = 'urn:ya.ru:post/153990/219'
 resource_url_entry = 'https://api-yaru.yandex.ru/person/153990/post/219/'
+resource_url_entry_imported = 'https://api-yaru.yandex.ru/person/153990/post/2116/'
 
 resource_urn_club = 'urn:ya.ru:club/4611686018427391272'
 resource_url_club = 'https://api-yaru.yandex.ru/club/4611686018427391272/'
@@ -78,6 +79,16 @@ class yaEntryCheck(unittest.TestCase):
         """Проверка соответствия свойства updated типу datetime.datetime."""
         entry = pyyaru.yaEntry(resource_url_entry).get()
         self.assertEqual(isinstance(entry.updated, datetime.datetime), True)
+        
+    def test_original_property(self):
+        """Проверка свойства original для импортированных постов."""
+        entry = pyyaru.yaEntry(resource_url_entry_imported).get()
+        self.assertEqual(entry.original, 'http://twitter.com/idlesign/statuses/20237021892')
+        
+    def test_original_property_is_none(self):
+        """Проверка original is None для неимпортированных постов."""
+        entry = pyyaru.yaEntry(resource_url_entry).get()
+        self.assertEqual(entry.original, None)
 
 
 class yaClubsCheck(unittest.TestCase):
