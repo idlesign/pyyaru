@@ -59,7 +59,9 @@ _Внимание_: для получения токена по приведен
 
 *Получение данных пользователя Я.ру*
 
-    person = pyyaru.yaPerson(resource).get()
+Получим данные о себе ('/me/'):
+
+    person = pyyaru.yaPerson('/me/').get()
 
 *Чтение свойств пользователя*
 
@@ -82,9 +84,15 @@ _Внимание_: для получения токена по приведен
 
 *Списки объектов*
 
-«Собирательные» ya-ресурсы (pyyaru описывает их классами yaPersons, yaClubs) транслируются в списки объектов соответствующих классов (yaPerson, yaClub) и хранятся в свойстве _objects_ объектов-контейнеров.  
+«Собирательные» ya-ресурсы (pyyaru описывает их классами yaPersons, yaClubs, yaEntries, порожденными от yaCollection) транслируются в списки объектов соответствующих типов (yaPerson, yaClub, Entry) и хранятся в свойстве _objects_ объектов-контейнеров.  
 Например, обнаружить всех друзей пользователя и вывести их имена можно так:
 
     friends = pyyaru.yaPersons(person.links['friends']).get()
     for friend in friends.objects:
         print friend.name
+
+А теперь получим названия последних публикаций пользователя:
+
+    my_entries = pyyaru.yaEntries(person.links['posts']).get()
+    for entry in my_entries.objects:
+        print entry.title

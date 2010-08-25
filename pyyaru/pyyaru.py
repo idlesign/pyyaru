@@ -16,11 +16,12 @@ API_SERVER = 'https://api-yaru.yandex.ru'
 
 URN_PREFIX = 'urn:ya.ru:'
 
-# Соотнонения URN-типов и объектов
+# Соотношения URN-типов и объектов
 URN_TYPES = {
     'person': 'yaPerson',
     'persons': 'yaPersons',
     'entry': 'yaEntry',
+    'entries': 'yaEntries',
     'club': 'yaClub',
     'clubs': 'yaClubs',
    }
@@ -117,21 +118,6 @@ class yaBase(object):
             if not attribute.startswith('_'):
                 yield (attribute, self.__dict__[attribute])
     
-    def _parse_list_to_objects(self, resource_data):
-        """Парсит xml-список, полученный с ресурса.
-        Создает новые объекты соответствующего класса по данным ресурса.
-        Используется для обработки ресурсов, содержащих перечисления
-        других ресурсов (н.п. clubs, persons).
-        
-        """
-        super(self.__class__, self)._parse(resource_data)
-        root = etree.fromstring(resource_data[1])
-        for item in root.xpath('//y:%s' % self._type.rstrip('s'), namespaces=NAMESPACES):
-            obj = globals()[self.__class__.__name__.rstrip('s')](None)
-            resource_data = [item.tag, etree.tostring(item, xml_declaration=True, encoding='utf-8')]
-            obj._parse(resource_data)
-            self.objects.append(obj)
-    
     def _parse(self, resource_data):
         """Запускает механизм парсинга xml, полученного с ресурса.
         Дерево xml транслирует в свойства объекта.
@@ -176,12 +162,44 @@ class yaBase(object):
         """Запрашивает объект с сервера и направляет его в парсер."""
         resource_data = yaResource(self.id).get()
         if resource_data is not None:
-            if resource_data[0] == self._type:
+            # API багфикс
+            if resource_data[0] == self._type or self._type == 'entries':
                 self._parse(resource_data)
             else:
                 raise yaObjectTypeMismatchError('Data type "%s" defined by resource mismatches pyyaru object "%s"' 
                        % (resource_data[0], self.__class__.__name__) )
         return self
+
+
+class yaCollection(yaBase):
+    """Класс описывает ресурсы-списки (н.п. список друзей, список клубов, список публикаций).
+    В случае удачного свершения, свойство objects объекта класса будет заполнено 
+    объектами соответствующего типа, каждый из которых описывает одну сущность из списка.
+    Свойство objects является списком.
+    
+    """
+      
+    def _parse(self, resource_data):
+        """Для получения списка объектов дополняем механизм разбора xml, определенный
+        в супер-классе yaBase.
+        
+        """
+        super(yaCollection, self)._parse(resource_data)
+        root = etree.fromstring(resource_data[1])
+        self.objects = []
+        ns = 'y'
+        tagname = self._type.rstrip('s')
+        if self._type == 'entries':
+            ns = 'a'
+            tagname = tagname.replace('ie', 'y')
+        
+        for item in root.xpath('//%s:%s' % (ns, tagname), namespaces=NAMESPACES):
+            obj = globals()['ya%s' % tagname.capitalize()](None)
+            resource_data = [item.tag, etree.tostring(item, xml_declaration=True, encoding='utf-8')]
+            obj._parse(resource_data)
+            self.objects.append(obj)
+        
+        del(self.__dict__[tagname])
 
 
 class yaPerson(yaBase):
@@ -216,22 +234,15 @@ class yaPerson(yaBase):
         raise NotImplementedError('This one is not yet implemented.')
 
 
-class yaPersons(yaBase):
+class yaPersons(yaCollection):
     """Класс описывает ресурс списка пользователий (н.п. список друзей).
     В случае удачного свершения, свойство objects объекта класса будет заполнено 
-    объектами класса yaPerson, каждый из которых описывает одиного пользователя 
+    объектами класса yaPerson, каждый из которых описывает одного пользователя 
     из списка.
     Свойство objects является списком.
     
     """
-    objects = []
-    
-    def _parse(self, resource_data):
-        """Заменяем вызов _parse вызовом _parse_list_to_objects для
-        получения списка объектов.
-        
-        """
-        self._parse_list_to_objects(resource_data)
+    pass
 
 
 class yaClub(yaBase):
@@ -266,21 +277,14 @@ class yaClub(yaBase):
         raise NotImplementedError('This one is not yet implemented.')
 
 
-class yaClubs(yaBase):
+class yaClubs(yaCollection):
     """Класс описывает ресурс списка клубов (н.п. те, в которых состоит пользователь.
     В случае удачного свершения, свойство objects объекта класса будет заполнено
     объектами класса yaClub, каждый из которых описывает один клуб из списка.
     Свойство objects является списком.
     
     """
-    objects = []
-    
-    def _parse(self, resource_data):
-        """Заменяем вызов _parse вызовом _parse_list_to_objects для
-        получения списка объектов.
-        
-        """
-        self._parse_list_to_objects(resource_data)
+    pass
 
 
 class yaEntry(yaBase):
@@ -386,6 +390,17 @@ class yaEntry(yaBase):
     def publish(self):
         """Публикует сообщение."""
         raise NotImplementedError('This one is not yet implemented.')
+
+
+class yaEntries(yaCollection):
+    """Класс описывает ресурс списка публикаций (н.п. список постов пользователя).
+    В случае удачного свершения, свойство objects объекта класса будет заполнено 
+    объектами класса yaEntry, каждый из которых описывает одну публикацию 
+    из списка.
+    Свойство objects является списком.
+    
+    """
+    pass
 
        
 class yaResource(object):

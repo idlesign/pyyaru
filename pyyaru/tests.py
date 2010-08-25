@@ -15,6 +15,7 @@ resource_url_persons = 'https://api-yaru.yandex.ru/person/96845657/friend/'
 resource_urn_entry = 'urn:ya.ru:post/153990/219'
 resource_url_entry = 'https://api-yaru.yandex.ru/person/153990/post/219/'
 resource_url_entry_imported = 'https://api-yaru.yandex.ru/person/153990/post/2116/'
+resource_url_entries =  'https://api-yaru.yandex.ru/person/153990/post/'
 
 resource_urn_club = 'urn:ya.ru:club/4611686018427391272'
 resource_url_club = 'https://api-yaru.yandex.ru/club/4611686018427391272/'
@@ -105,6 +106,14 @@ class yaPersonsCheck(unittest.TestCase):
         """Создание объектов класса yaPerson для элементов списка person."""
         persons = pyyaru.yaPersons(resource_url_persons).get()
         self.assertNotEqual(len(persons.objects), 0)
+
+
+class yaEntriesCheck(unittest.TestCase):
+
+    def test_objects_spawn(self):
+        """Создание объектов класса yaEntry для элементов списка публикаций."""
+        entries = pyyaru.yaEntries(resource_url_entries).get()
+        self.assertNotEqual(len(entries.objects), 0)
 
 
 class yaResourceCheck(unittest.TestCase):    
