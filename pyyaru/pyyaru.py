@@ -5,7 +5,8 @@
 import logging
 import os
 import datetime
-from urllib2 import urlopen, Request, URLError
+import httplib
+from urlparse import urlparse
 from collections import defaultdict
 from lxml import etree
 from __init__ import VERSION
@@ -50,11 +51,9 @@ class yaError(Exception):
     """Базовый класс ошибок модуля."""
     pass
 
-
 class yaObjectTypeMismatchError(yaError):
     """Ошибка несоответствия класса pyyaru типу данных, заявленному ресурсом."""
     pass
-
 
 class yaEntryTypeUnknownError(yaError):
     """Ошибка неопознанного типа публикации (yaEntry)."""
@@ -62,6 +61,14 @@ class yaEntryTypeUnknownError(yaError):
 
 class yaEntryAccessUnknownError(yaError):
     """Ошибка неопознанного уровня доступа для публикации (yaEntry)."""
+    pass
+
+class yaOperationError(yaError):
+    """Ошибка действия, произведённого над ресурсом."""
+    pass
+
+class yaUnsupportedMethodError(yaError):
+    """Ошибка вызова неподдерживаемого метода."""
     pass
 
 
@@ -83,19 +90,24 @@ class yaBase(object):
     
     __logger = Logger()
     
-    def __init__(self, id, lazy=False):
+    def __init__(self, id, **kwargs):
         self.__parsed = False
         self.id = id
         self._type = self.__class__.__name__.lstrip('ya').lower()
-        if lazy:
+        
+        if 'lazy' in kwargs and kwargs['lazy']:
             self.get()
+            
+        if 'attributes' in kwargs and isinstance(kwargs['attributes'], dict):
+            for key in kwargs['attributes'].keys():
+                setattr(self, key, kwargs['attributes'][key])
     
     def __getattr__(self, name):
         """При обращении к любому из свойств объекта, в случае, если данные
         еще не были загружены с ресурса, происходит загрузка.
         
         """
-        if self.__parsed == False:
+        if self.id is not None and self.__parsed == False:
             self.get()
     
         try:
@@ -105,7 +117,7 @@ class yaBase(object):
     
     def __str__(self):
         """Трансляцией объекта в строку является идентификатор объекта."""
-        return self.id
+        return '%s' % self.id
     
     def __iter__(self):
         """Реализует возможность прохода по всем свойствам объекта в
@@ -169,6 +181,29 @@ class yaBase(object):
                 raise yaObjectTypeMismatchError('Data type "%s" defined by resource mismatches pyyaru object "%s"' 
                        % (resource_data[0], self.__class__.__name__) )
         return self
+    
+    def save(self, target_url=None):
+        """Создаёт новый ресурс, либо обновляет имеющийся."""
+        data = self._compose()
+        
+        if self.id is None:
+            resource_data = yaResource(target_url).create(data)
+            if not resource_data[2]:
+                raise yaOperationError('Unable to create resource at "%s".' % target_url)
+        else:
+            resource_data = yaResource(self.links['edit']).update(data)
+            if not resource_data[2]:
+                raise yaOperationError('Unable to update resource at "%s".' % self.links['edit'])
+            
+        if resource_data is not None and resource_data[2]:
+            self._parse(resource_data)
+            
+    def delete(self):
+        """Удаляет ресурс"""
+        if self.id is not None:
+            resource_data = yaResource(self.links['edit']).delete()
+            if not resource_data[2]:
+                raise yaOperationError('Unable to delete resource at "%s".' % self.links['edit'])
 
 
 class yaCollection(yaBase):
@@ -200,24 +235,38 @@ class yaCollection(yaBase):
             self.objects.append(obj)
         
         del(self.__dict__[tagname])
+        
+    def save(self):
+        """Для коллекций метод не поддерживается."""
+        raise yaUnsupportedMethodError('"save" method is unsupported by collections.')
+
+    def delete(self):
+        """Для коллекций метод не поддерживается."""
+        raise yaUnsupportedMethodError('"delete" method is unsupported by collections.')
 
 
 class yaPerson(yaBase):
     """Класс описывает ресурс пользователя Я.ру (профиль)."""
 
-    def rename(self, new_name):
+    def change_name(self, new_name):
         """Смена имени пользователя. Под капотом происходит создание
         новой записи типа 'rename'.
         
         """
         raise NotImplementedError('This one is not yet implemented.')
     
-    def set_status(self, status):
+    def set_status(self, status, access='public'):
         """Смена настроения. Под капотом происходит создание
         новой записи типа 'status'.
         
         """
-        raise NotImplementedError('This one is not yet implemented.')
+        yaEntry(
+            attributes = {
+                'type': 'status',
+                'access': access,
+                'content': status, 
+            }
+            ).save(self.links['posts'])
     
     def friend(self):
         """Подружиться. Под капотом происходит создание
@@ -290,6 +339,8 @@ class yaClubs(yaCollection):
 class yaEntry(yaBase):
     """Класс описывает ресурс сообщения (публикации)."""
     
+    __logger = Logger()
+    
     _TYPES = [
         # Записи
         'link',             # Ссылка
@@ -335,12 +386,16 @@ class yaEntry(yaBase):
         'friends', # друзьям
         ]
     
+    def __init__(self, id=None, **kwargs):
+        super(self.__class__, self).__init__(id, **kwargs)
+    
     def _set_type(self, entry_type):
         """Устанавливает тип записи, сверяясь со списком разрешенных типов."""
         if entry_type in self._TYPES:
             self._entry_type = entry_type
         else:
             raise yaEntryTypeUnknownError('Unable to set unrecognized "%s" entry type.' % entry_type)
+        
     def _get_type(self):
         """Возвращает тип записи."""
         return self._entry_type
@@ -349,9 +404,10 @@ class yaEntry(yaBase):
     def _set_access(self, access_level):
         """Устанавливает уровень доступа к записи, сверяясь со списком разрешенных уровней."""
         if access_level in self._ACCESS_LEVELS:
-            self._access = access_level
+            self._access = access_level 
         else:
             raise yaEntryAccessUnknownError('Unable to set unrecognized %s" entry access type.' % access_level)
+        
     def _get_access(self):
         """Возвращает уровень доступа к записи."""
         return self._access
@@ -386,10 +442,24 @@ class yaEntry(yaBase):
                 self.type = category.attrib['term']
             else:
                 self.__dict__['categories'][category.attrib['term']] = category.attrib['scheme']
-                
-    def publish(self):
-        """Публикует сообщение."""
-        raise NotImplementedError('This one is not yet implemented.')
+
+    def _compose(self):
+        """Компонует xml-документ для публикации на ресурсе"""
+        
+        ns_a = '{%s}' % NAMESPACES['a']
+        ns_y = '{%s}' % NAMESPACES['y']
+        
+        xml = etree.Element(ns_a+'entry', nsmap= { None: NAMESPACES['a'], 'y': NAMESPACES['y'] })
+        etree.SubElement(xml, ns_a+'category', term=self.type, scheme=URN_PREFIX+'posttypes')
+        etree.SubElement(xml, ns_y+'access').text = self.access
+        
+        for property_name, property_value in self:
+            etree.SubElement(xml, ns_a+property_name).text = property_value
+        
+        xml = etree.tostring(xml, encoding='utf-8', pretty_print=True, xml_declaration=True)
+        self.__logger.debug('Composed XML:\n%s\n%s%s' % ('-----'*4, xml, '____'*25))
+        
+        return xml
 
 
 class yaEntries(yaCollection):
@@ -429,7 +499,7 @@ class yaResource(object):
                 
         self.url = url
         
-    def __open_url(self, url, data=None):
+    def __open_url(self, data=None, request_method="GET"):
         """Открывает URL, опционально используя токен авторизации.
         
         Реализована упрощенная схема, без взаимодействия с OAuth-сервером.
@@ -442,38 +512,73 @@ class yaResource(object):
         Полученный файл (token) можно положить рядом с pyyaru.py, в таком случае 
         реквизиты будут взяты из него автоматически.
         
+        Вернёт кортеж из типа ресурса, полученных с него данных , либо None.
+        
         """
+        url = self.url
         headers = { 'User-Agent': 'pyyaru %s' % '.'.join(map(str, VERSION)) }
         if ACCESS_TOKEN is not None:
             headers.update({ 'Authorization': 'OAuth '+ACCESS_TOKEN })
         
         self.__logger.info('Opening URL "%s" with "%s"...' %(url, headers)) 
         
-        urlobj = None
+        resource_data = None
         try:
-            urlobj = urlopen(Request(url, data=data, headers=headers))
-        except URLError as e:
+            parsed_url = urlparse(url)
+            connection = httplib.HTTPConnection(parsed_url.netloc)
+            if LOG_LEVEL == logging.DEBUG:
+                connection.set_debuglevel(1)
+            connection.request(request_method, parsed_url.path, data, headers)
+            response = connection.getresponse()
+            if response.status in (301, 302, 303):
+                self.__logger.info('Redirected to: %s' % response.getheader('Location'))
+                response.read() # Непременно прочтем ответ перед следующим запросом
+                connection.request(request_method, urlparse(response.getheader('Location')).path, data, headers)
+                response = connection.getresponse()
+            resource_data = response.read()
+            connection.close()
+        except httplib.HTTPException as e:
             self.__logger.error(' Failed to open "%s".\n Error: "%s"' % (url, e))
         
-        self.urlobj = urlobj 
+        successful = False
         
-    def get(self):
-        """Забирает данные с URL.
-        Вернёт кортеж из типа ресурса и полученных с него данных.
+        if 200 <= response.status <300:
+            successful = True
         
-        """
-        self.__open_url(self.url)
-        if self.urlobj is not None:
-            urlobj_data = self.urlobj.read()
-            self.__logger.info('Returned URL: %s' % (self.urlobj.geturl()))
-            self.__logger.debug('Response Headers:\n%s\n%s%s' % ('-----'*4, self.urlobj.info(), '____'*25))
-            self.__logger.debug('Response Body:\n%s\n%s%s' % ('-----'*4, urlobj_data, '____'*25) )
+        if data is not None and response.status == 400:
+            successful = False
+            self.__logger.error(' Bad request. Check it up for malformed data\n%s\n%s\n%s.' % ('-----'*4, data, '____'*25))
+        
+        if resource_data is not None:
+            if resource_data != '':
+                self.__logger.debug('Response Body:\n%s\n%s\n%s' % ('-----'*4, resource_data, '____'*25) )
             
-            resource_type = self.urlobj.info().getparam('type')
+            resource_type = None
+            
+            for ctype_data in response.getheader('Content-Type').split(';'):
+                type_index = ctype_data.rfind('type')
+                if type_index > -1:
+                    resource_type = ctype_data[type_index+5:]
+            
+            resource_data = (resource_type, resource_data, successful)
+        
+        return resource_data
 
-            return (resource_type, urlobj_data)
-        else:
-            return None
+    def get(self):
+        """Забирает данные ресурса."""
+        return self.__open_url()
+    
+    def create(self, data):
+        """Отсылает запрос на создание ресурса."""
+        return self.__open_url(data, "POST")
+    
+    def delete(self):
+        """Отсылает запрос на удаление ресурса."""
+        return self.__open_url(request_method="DELETE")
+
+    def update(self, data):
+        """Отсылает запрос на модификацию ресурса."""
+        return self.__open_url(data, "PUT")
     
     def get_object(self):
         """Забирает данные с ресура и по возможности преобразует ресурс
@@ -496,8 +601,3 @@ class yaResource(object):
                 self.__logger.error('Resource type "%s" is unknown' % resource_type)
             
         return obj
-                
-    def set(self, data=None):
-        """Отсылает данные на URL."""
-        
-        raise NotImplementedError('This one is not yet implemented.')

@@ -64,6 +64,14 @@ class yaPersonCheck(unittest.TestCase):
         self.assertEqual(person.links.has_key('self'), True)
 
 
+class yaBaseCheck(unittest.TestCase):
+    
+    def test_kwarg_attributes(self):
+        """Проверка трансляции аргумента attributes конструктора в свойства объекта."""
+        somebase = pyyaru.yaBase('bounce', attributes = { 'someattr': True })
+        self.assertEqual(somebase.someattr, True)
+
+
 class yaEntryCheck(unittest.TestCase):
     
     def test_access_property(self):
@@ -90,6 +98,28 @@ class yaEntryCheck(unittest.TestCase):
         """Проверка original is None для неимпортированных постов."""
         entry = pyyaru.yaEntry(resource_url_entry).get()
         self.assertEqual(entry.original, None)
+        
+    def test_object_to_str(self):
+        """Проверка возвращения методом __str__ строки."""
+        entry = pyyaru.yaEntry()
+        self.assertEqual(str(entry), 'None')
+        
+    def test_kwarg_attributes_wrong(self):
+        """Крушение при передаче ошибочного значения в аргументе attributes конструктора."""
+        self.assertRaises(pyyaru.yaEntryAccessUnknownError, pyyaru.yaEntry, attributes = { 'access': 'me-and-my-kitten' })
+
+
+class yaCollectionCheck(unittest.TestCase):
+    
+    def test_save_unsupported(self):
+        """Крушение при вызове метода save."""
+        collection = pyyaru.yaCollection('bounce')
+        self.assertRaises(pyyaru.yaUnsupportedMethodError, collection.save)
+        
+    def test_delete_unsupported(self):
+        """Крушение при вызове метода delete."""
+        collection = pyyaru.yaCollection('bounce')
+        self.assertRaises(pyyaru.yaUnsupportedMethodError, collection.delete)
 
 
 class yaClubsCheck(unittest.TestCase):
