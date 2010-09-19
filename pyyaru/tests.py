@@ -76,7 +76,7 @@ class yaEntryCheck(unittest.TestCase):
     
     def test_access_property(self):
         """Проверка существования свойства access."""
-        entry = pyyaru.yaEntry(resource_url_entry)
+        entry = pyyaru.yaEntry(resource_url_entry).get()
         self.assertEqual(entry.access, 'public')
         
     def test_comments_disabled_property(self):
@@ -112,6 +112,13 @@ class yaEntryCheck(unittest.TestCase):
     def test_kwarg_attributes_wrong(self):
         """Крушение при передаче ошибочного значения в аргументе attributes конструктора."""
         self.assertRaises(pyyaru.yaEntryAccessUnknownError, pyyaru.yaEntry, attributes = { 'access': 'me-and-my-kitten' })
+        
+    def test_init_properties(self):
+        """Проверка инициализации свойств несвязанного объяекта."""
+        entry = pyyaru.yaEntry()
+        self.assertEqual(entry.access, 'private')
+        self.assertEqual(entry.comments_disabled, False)
+        self.assertEqual(entry.type, 'text')
 
 
 class yaCollectionCheck(unittest.TestCase):

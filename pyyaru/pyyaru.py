@@ -260,22 +260,24 @@ class yaPerson(yaBase):
         новой записи типа 'status'.
         
         """
-        yaEntry(
+        entry = yaEntry(
             attributes = {
                 'type': 'status',
                 'access': access,
                 'content': status, 
             }
             ).save(self.links['posts'])
+
+        return entry
     
-    def friend(self):
+    def friend(self, whom, entry_text='', access='public', comments_disabled=False):
         """Подружиться. Под капотом происходит создание
         новой записи типа 'friend'.
         
         """
         raise NotImplementedError('This one is not yet implemented.')
     
-    def unfriend(self):
+    def unfriend(self, whom, entry_text='', access='public', comments_disabled=False):
         """Раздружиться. Под капотом происходит создание
         новой записи типа 'unfriend'.
         
@@ -387,6 +389,8 @@ class yaEntry(yaBase):
         ]
     
     _comments_disabled = False
+    _access = 'private'
+    _entry_type = 'text'
     
     def __init__(self, id=None, **kwargs):
         super(self.__class__, self).__init__(id, **kwargs)
