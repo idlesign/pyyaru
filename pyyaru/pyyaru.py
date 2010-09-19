@@ -386,6 +386,8 @@ class yaEntry(yaBase):
         'friends', # друзьям
         ]
     
+    _comments_disabled = False
+    
     def __init__(self, id=None, **kwargs):
         super(self.__class__, self).__init__(id, **kwargs)
     
@@ -413,6 +415,15 @@ class yaEntry(yaBase):
         return self._access
     access = property(_get_access, _set_access)  # Методы выше определяют свойство access.
     
+    def _set_comments_disabled(self, disabled):
+        """Устанавливает флаг отключения возможности комментирования записи."""
+        self._comments_disabled = disabled
+        
+    def _get_comments_disabled(self):
+        """Возвращает значение флага отключения возможности комментирования записи."""
+        return self._comments_disabled
+    comments_disabled = property(_get_comments_disabled, _set_comments_disabled)  # Методы выше определяют свойство comments_disabled.
+    
     def _parse(self, resource_data):
         """Парсит xml-документ с учетом специфики ресурса entry.
         Утилизирует парсер класса-родителя.
@@ -423,7 +434,12 @@ class yaEntry(yaBase):
         meta_tag = '{%s}meta' % NAMESPACES['y']
         
         self.access = self.__dict__['{%s}access' % NAMESPACES['y']]
-        # Мы избавляемся от ненужных атрибутов объекта, созданных парсером класса-родителя.
+        if '{%s}comments-disabled' % NAMESPACES['y'] in self.__dict__:
+            del(self.__dict__['{%s}comments-disabled' % NAMESPACES['y']])
+            self.comments_disabled = True
+        else:
+            self.comments_disabled = False
+        # Мы избавляемся от ненужных атрибутов объекта, созданных парсером класса-родителя.        
         del(self.__dict__['category'])
         del(self.__dict__['{%s}access' % NAMESPACES['y']])
         if meta_tag in self.__dict__:
@@ -453,8 +469,13 @@ class yaEntry(yaBase):
         etree.SubElement(xml, ns_a+'category', term=self.type, scheme=URN_PREFIX+'posttypes')
         etree.SubElement(xml, ns_y+'access').text = self.access
         
+        if self.comments_disabled:
+            etree.SubElement(xml, ns_y+'comments-disabled')
+        
         for property_name, property_value in self:
-            etree.SubElement(xml, ns_a+property_name).text = property_value
+            if isinstance(property_value, basestring):
+                property_value = unicode(property_value)
+                etree.SubElement(xml, ns_a+property_name).text = property_value
         
         xml = etree.tostring(xml, encoding='utf-8', pretty_print=True, xml_declaration=True)
         self.__logger.debug('Composed XML:\n%s\n%s%s' % ('-----'*4, xml, '____'*25))

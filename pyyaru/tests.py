@@ -79,6 +79,11 @@ class yaEntryCheck(unittest.TestCase):
         entry = pyyaru.yaEntry(resource_url_entry)
         self.assertEqual(entry.access, 'public')
         
+    def test_comments_disabled_property(self):
+        """Проверка существования свойства comments_disabled."""
+        entry = pyyaru.yaEntry(resource_url_entry)
+        self.assertEqual(entry.comments_disabled, False)
+        
     def test_type_property(self):
         """Проверка существования свойства type."""
         entry = pyyaru.yaEntry(resource_url_entry)
