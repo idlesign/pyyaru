@@ -17,8 +17,8 @@ resource_url_entry = 'https://api-yaru.yandex.ru/person/153990/post/219/'
 resource_url_entry_imported = 'https://api-yaru.yandex.ru/person/153990/post/2116/'
 resource_url_entries =  'https://api-yaru.yandex.ru/person/153990/post/'
 
-resource_urn_club = 'urn:ya.ru:club/4611686018427391272'
-resource_url_club = 'https://api-yaru.yandex.ru/club/4611686018427391272/'
+resource_urn_club = 'urn:ya.ru:club/4611686018427439760'
+resource_url_club = 'https://api-yaru.yandex.ru/club/4611686018427439760/'
 resource_url_clubs = 'https://api-yaru.yandex.ru/person/96845657/club/'
 
 class yaPersonCheck(unittest.TestCase):
@@ -157,6 +157,13 @@ class yaEntriesCheck(unittest.TestCase):
         entries = pyyaru.yaEntries(resource_url_entries).get()
         self.assertNotEqual(len(entries.objects), 0)
 
+    def test_next_method(self):
+        """Проверка работы метода more()."""
+        entries = pyyaru.yaEntries(resource_url_entries)
+        self.assertEqual(entries.more(), False) # на несвязанном объекте
+        entries.get()
+        self.assertNotEqual(entries.more(), False) # на связанном объекте
+
 
 class yaResourceCheck(unittest.TestCase):    
          
@@ -172,7 +179,7 @@ class yaResourceCheck(unittest.TestCase):
     def test_resource_urn_to_url(self):
         """Приведение urn к полному адресу."""
         resource = pyyaru.yaResource(resource_urn_person)
-        self.assertEqual(resource.url, '%s/resource?id=%s' % (pyyaru.API_SERVER, resource_urn_person))
+        self.assertEqual(resource.url, '%s/resource/?id=%s' % (pyyaru.API_SERVER, resource_urn_person))
         
     def test_resource_url_to_url(self):
         """Приведение url к себе самому."""

@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
+"""pyyaru реализует Python-интерфейс к API блог-сервиса Я.ру http://wow.ya.ru.
+Репозитарий проекта: http://github.com/idlesign/pyyaru
 
-"""pyyaru реализует Python-интерфейс к API блог-сервиса Я.ру http://wow.ya.ru."""
+"""
 
 import logging
 import os
 import datetime
 import httplib
-from urlparse import urlparse
+import urlparse
 from collections import defaultdict
 from lxml import etree
 from __init__ import VERSION
@@ -69,6 +71,10 @@ class yaOperationError(yaError):
 
 class yaUnsupportedMethodError(yaError):
     """Ошибка вызова неподдерживаемого метода."""
+    pass
+
+class yaInternalServerError(yaError):
+    """Внутрення ошибка на сервере, предоставляющем ресурс."""
     pass
 
 
@@ -234,7 +240,8 @@ class yaCollection(yaBase):
             obj._parse(resource_data)
             self.objects.append(obj)
         
-        del(self.__dict__[tagname])
+        if tagname in self.__dict__:
+            del(self.__dict__[tagname])
         
     def save(self):
         """Для коллекций метод не поддерживается."""
@@ -243,6 +250,40 @@ class yaCollection(yaBase):
     def delete(self):
         """Для коллекций метод не поддерживается."""
         raise yaUnsupportedMethodError('"delete" method is unsupported by collections.')
+    
+    def more(self):
+        """Запрашивает с сервера следующую порцию объектов.
+        Возвращает список новых объектов, при этом дополняет список objects текущего
+        собирательного класса новыми.
+        В случае, если заявленный собирательный ресурс со следующей порцией не описывает 
+        объектов, вернёт False.
+        
+        """
+        if 'links' in self.__dict__ and 'next' in self.links:
+            more_items = globals()[self.__class__.__name__](self.links['next']).get()
+            if len(more_items.objects) > 0:
+                self.objects += more_items.objects
+                self.links['next'] = more_items.links['next']
+                return more_items.objects
+            
+        return False
+    
+    def iter(self):
+        """Итератор осуществляет проход про всем элементам, которые описывает собирательный
+        ресурс, задействуя при этом постраничное перемещение more().
+        Выбрасывает объект, созданный на основе очередного элемента.
+        
+        """
+        for obj in self.objects:
+            yield obj
+        
+        while True:
+            more_items = self.more()
+            if more_items:
+                for obj in more_items:
+                    yield obj
+            else:
+                break
 
 
 class yaPerson(yaBase):
@@ -283,6 +324,17 @@ class yaPerson(yaBase):
         
         """
         raise NotImplementedError('This one is not yet implemented.')
+    
+    def _set_entries(self):
+        """"""
+        self._entries = yaEntries(self.links['posts']).get()
+        
+    def _get_entries(self):
+        """"""
+        if '_entries' not in self.__dict__:
+            self._set_entries()
+        return self._entries        
+    entries = property(_get_entries, _set_entries) # Методы выше определяют свойство entries.
 
 
 class yaPersons(yaCollection):
@@ -393,6 +445,10 @@ class yaEntry(yaBase):
     _entry_type = 'text'
     
     def __init__(self, id=None, **kwargs):
+        """Метод перекрывает родительский для возможности создания нового 
+        объекта yaEntry (без указания id).
+        
+        """
         super(self.__class__, self).__init__(id, **kwargs)
     
     def _set_type(self, entry_type):
@@ -518,11 +574,32 @@ class yaResource(object):
         url = resource_name
         if not resource_name.startswith(API_SERVER):
             if resource_name.startswith(URN_PREFIX):
-                url = '%s/resource?id=%s' % (API_SERVER, resource_name)
+                url = '%s/resource/?id=%s' % (API_SERVER, resource_name)
             else:
                 url = '%s/%s' % (API_SERVER, resource_name)
                 
         self.url = url
+    
+    
+    def __make_request(self, connection, request_method, request_url, data, headers):
+        """Производит запросы к серверу в рамках одного соединения.
+        Рекурсивно проходит перенаправления.
+        
+        """
+        parsed_url = urlparse.urlparse(request_url)
+        request_url = parsed_url.path
+        query_string = parsed_url.query
+        if query_string != '':
+            request_url = request_url+'?'+query_string
+        connection.request(request_method, request_url, data, headers)
+        response = connection.getresponse()
+        if response.status in (301, 302, 303):
+            location = response.getheader('Location')
+            self.__logger.info('Redirected to: %s' % location)
+            response.read() # Непременно прочтем ответ перед следующим запросом
+            response = self.__make_request(connection, request_method, location, data, headers)
+        return response
+        
         
     def __open_url(self, data=None, request_method="GET"):
         """Открывает URL, опционально используя токен авторизации.
@@ -549,30 +626,26 @@ class yaResource(object):
         
         resource_data = None
         try:
-            parsed_url = urlparse(url)
+            parsed_url = urlparse.urlparse(url)
             connection = httplib.HTTPConnection(parsed_url.netloc)
             if LOG_LEVEL == logging.DEBUG:
                 connection.set_debuglevel(1)
-            connection.request(request_method, parsed_url.path, data, headers)
-            response = connection.getresponse()
-            if response.status in (301, 302, 303):
-                self.__logger.info('Redirected to: %s' % response.getheader('Location'))
-                response.read() # Непременно прочтем ответ перед следующим запросом
-                connection.request(request_method, urlparse(response.getheader('Location')).path, data, headers)
-                response = connection.getresponse()
+            response = self.__make_request(connection, request_method, url, data, headers)
             resource_data = response.read()
             connection.close()
         except httplib.HTTPException as e:
             self.__logger.error(' Failed to open "%s".\n Error: "%s"' % (url, e))
         
         successful = False
+       
+        if data is not None and response.status == 400:
+            self.__logger.error(' Bad request. Check it up for malformed data\n%s\n%s\n%s.' % ('-----'*4, data, '____'*25))
+            
+        if response.status == 500:
+            self.__logger.error(' Internal server error occured while opening %s with %s.' % (url, headers))
         
         if 200 <= response.status <300:
             successful = True
-        
-        if data is not None and response.status == 400:
-            successful = False
-            self.__logger.error(' Bad request. Check it up for malformed data\n%s\n%s\n%s.' % ('-----'*4, data, '____'*25))
         
         if resource_data is not None:
             if resource_data != '':
