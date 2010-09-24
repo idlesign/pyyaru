@@ -100,9 +100,6 @@ class yaBase(object):
         self.__parsed = False
         self.id = id
         self._type = self.__class__.__name__.lstrip('ya').lower()
-        
-        if 'lazy' in kwargs and kwargs['lazy']:
-            self.get()
             
         if 'attributes' in kwargs and isinstance(kwargs['attributes'], dict):
             for key in kwargs['attributes'].keys():
@@ -325,16 +322,14 @@ class yaPerson(yaBase):
         """
         raise NotImplementedError('This one is not yet implemented.')
     
-    def _set_entries(self):
-        """"""
-        self._entries = yaEntries(self.links['posts']).get()
+    def entries(self, by_type='ANY'):
+        """Запрашивает с сервера публикации пользователя и возвращает их
+        в виде объекта yaEntry.
+        Параметр by_type позволяет запросить публикации определенного типа
+        (см. список _TYPES класса yaEntry).
         
-    def _get_entries(self):
-        """"""
-        if '_entries' not in self.__dict__:
-            self._set_entries()
-        return self._entries        
-    entries = property(_get_entries, _set_entries) # Методы выше определяют свойство entries.
+        """        
+        return yaEntries(self.links['posts'], by_type).get()
 
 
 class yaPersons(yaCollection):
@@ -551,7 +546,19 @@ class yaEntries(yaCollection):
     Свойство objects является списком.
     
     """
-    pass
+    def __init__(self, id, by_type='ANY', **kwargs):
+        """Метод перекрывает родительский для возможности указания
+        типа данных yaEntry.
+        Фильтрация по типу данных поддерживается только в случае, если
+        задан полноценный URL.
+        """
+        if by_type != 'ANY':
+            if id.startswith('http') :
+                id = '%s%s/' % (id, by_type)
+            else:
+                self.__logger.warning("Attribute 'by_type' set to '%s' for non-http id '%s', thus will be ignored." % (by_type, id))
+        
+        super(self.__class__, self).__init__(id, **kwargs)
 
        
 class yaResource(object):
@@ -643,6 +650,7 @@ class yaResource(object):
             
         if response.status == 500:
             self.__logger.error(' Internal server error occured while opening %s with %s.' % (url, headers))
+            raise yaInternalServerError('Internal server error occured while opening %s with %s.' % (url, headers))
         
         if 200 <= response.status <300:
             successful = True

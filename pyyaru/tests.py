@@ -157,13 +157,19 @@ class yaEntriesCheck(unittest.TestCase):
         entries = pyyaru.yaEntries(resource_url_entries).get()
         self.assertNotEqual(len(entries.objects), 0)
 
-    def test_next_method(self):
+    def test_method_more(self):
         """Проверка работы метода more()."""
         entries = pyyaru.yaEntries(resource_url_entries)
         self.assertEqual(entries.more(), False) # на несвязанном объекте
         entries.get()
         self.assertNotEqual(entries.more(), False) # на связанном объекте
 
+    def test_method_iter(self):
+        """Проверка работы метода iter()."""
+        entries = pyyaru.yaEntries(resource_url_entries)
+        for entry in entries.iter():
+            self.assertEqual(entry.__class__.__name__, 'yaEntry')
+            break
 
 class yaResourceCheck(unittest.TestCase):    
          
