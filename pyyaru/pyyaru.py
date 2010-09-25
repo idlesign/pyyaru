@@ -36,9 +36,10 @@ NAMESPACES = {
 
 ACCESS_TOKEN = None
 
-# Если в директории бибилиотеки лежит файл token, то берем реквизиты из него
+# Если в директории бибилиотеки лежит файл token и ACCESS_TOKEN не задан, 
+# то берем реквизиты из файла.
 token_filepath = '%s/token' % os.path.dirname(os.path.realpath(__file__))
-if os.path.exists(token_filepath):
+if os.path.exists(token_filepath) and ACCESS_TOKEN is None:
     token_file = open(token_filepath, 'rb')
     token = eval(token_file.read())
     if isinstance(token, dict):
@@ -324,12 +325,21 @@ class yaPerson(yaBase):
     
     def entries(self, by_type='ANY'):
         """Запрашивает с сервера публикации пользователя и возвращает их
-        в виде объекта yaEntry.
+        в виде объекта yaEntries.
         Параметр by_type позволяет запросить публикации определенного типа
         (см. список _TYPES класса yaEntry).
         
         """        
         return yaEntries(self.links['posts'], by_type).get()
+    
+    def friends_entries(self, by_type='ANY'):
+        """Запрашивает с сервера публикации друзей пользователя и возвращает их
+        в виде объекта yaEntries.
+        Параметр by_type позволяет запросить публикации определенного типа
+        (см. список _TYPES класса yaEntry).
+        
+        """
+        return yaEntries(self.links['friends_posts'], by_type).get()
 
 
 class yaPersons(yaCollection):
