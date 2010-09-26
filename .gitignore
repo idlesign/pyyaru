@@ -3,3 +3,5 @@
 .pydevproject
 .settings
 token
+docs/build/*
+!.gitignore
