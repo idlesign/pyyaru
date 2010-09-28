@@ -527,12 +527,12 @@ class yaEntry(yaBase):
         
         self.__dict__['updated'] = datetime.datetime.strptime(self.__dict__['updated'], '%Y-%m-%dT%H:%M:%SZ')
         root = etree.fromstring(resource_data[1])
-        self.__dict__['categories'] = {}
+        self.__dict__['categories'] = []
         for category in root.xpath('/*/a:category', namespaces=NAMESPACES):
             if category.attrib['scheme'] == 'urn:ya.ru:posttypes':
                 self.type = category.attrib['term']
             else:
-                self.__dict__['categories'][category.attrib['term']] = category.attrib['scheme']
+                self.__dict__['categories'].append(category.attrib['term'])
 
     def _compose(self):
         """Компонует xml-документ для публикации на ресурсе."""
@@ -546,6 +546,9 @@ class yaEntry(yaBase):
         
         if self.comments_disabled:
             etree.SubElement(xml, ns_y+'comments-disabled')
+            
+#        for category in self.categories:
+#            etree.SubElement(xml, ns_a+'category', term=category, scheme='https://api-yaru.yandex.ru/person/незнаем/tag')
         
         for property_name, property_value in self:
             if isinstance(property_value, basestring):
