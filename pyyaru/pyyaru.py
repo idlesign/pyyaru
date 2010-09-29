@@ -516,15 +516,22 @@ class yaEntry(yaBase):
         original_tag = '{%s}original' % NAMESPACES['y']
         meta_tag = '{%s}meta' % NAMESPACES['y']
         
-        self.access = self.__dict__['{%s}access' % NAMESPACES['y']]
+        access_property = '{%s}access' % NAMESPACES['y']
+        
+        if access_property in self.__dict__:
+            self.access = self.__dict__[access_property]
+            del(self.__dict__[access_property])
+        else:
+            self.access = 'public'
+            
         if '{%s}comments-disabled' % NAMESPACES['y'] in self.__dict__:
             del(self.__dict__['{%s}comments-disabled' % NAMESPACES['y']])
             self.comments_disabled = True
         else:
             self.comments_disabled = False
-        # Мы избавляемся от ненужных атрибутов объекта, созданных парсером класса-родителя.        
+                
         del(self.__dict__['category'])
-        del(self.__dict__['{%s}access' % NAMESPACES['y']])
+        
         if meta_tag in self.__dict__:
             del(self.__dict__[meta_tag])
         if original_tag in self.__dict__:
