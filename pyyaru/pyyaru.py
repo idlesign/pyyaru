@@ -32,7 +32,8 @@ URN_TYPES = {
 
 NAMESPACES = { 
     'a': 'http://www.w3.org/2005/Atom', 
-    'y': 'yandex:data', 
+    'y': 'yandex:data', # TODO: Скоро будет http://api.yandex.ru/yaru/
+    'thr': 'http://purl.org/syndication/thread/1.0',
 }
 
 ACCESS_TOKEN = None
@@ -165,29 +166,48 @@ class yaBase(object):
         
         """
         for el in root:
-            tagname = el.tag.replace('{%s}' % el.nsmap[None], '')
             
-            if tagname != 'link':
+            nsmap = el.nsmap[None]
+            
+            if 'y' in el.nsmap and el.tag.find('yandex') > -1:
+                nsmap = el.nsmap['y']
+                
+            tagname = el.tag.replace('{%s}' % nsmap, '')
+                
+            if tagname == 'link':
+                # ссылки обрабатываем отдельно, загоняя их в "тэг" links
+                tagname = 'links'
+                tagcontent = [ el.attrib['rel'], el.attrib['href'] ]
+            else:
                 if len(el) > 0:
                     usedict = defaultdict(list)
                     for subel in self.__parse_recursion(el, usedict):
-                        usedict[subel[0]].append(subel[1])
+                        if subel[0] == 'links':
+                            # из вложенных элементов типа link формируем словарь
+                            if subel[0] not in usedict:
+                                usedict[subel[0]] = {}  
+                            usedict[subel[0]][subel[1][0]] = subel[1][1] 
+                        else:                            
+                            if isinstance(subel[1], basestring):
+                                usedict[subel[0]] = subel[1]
+                            else:
+                                usedict[subel[0]].append(subel[1])
                     tagcontent = usedict
                 else:
                     tagcontent = el.text
                 
-                if isinstance(tagcontent, str):
+                if isinstance(tagcontent, basestring):
                     tagcontent = tagcontent.strip()
                     if tagcontent == '':
                         tagcontent = None
                 
-                yield [tagname, tagcontent]
+            yield [tagname, tagcontent]
         
     def get(self):
         """Запрашивает объект с сервера и направляет его в парсер."""
         resource_data = yaResource(self.id).get()
         if resource_data is not None:
-            # API багфикс
+            # FIXME: API багфикс (не задан тип в Content-type) для entries
             if resource_data[0] == self._type or self._type == 'entries':
                 self._parse(resource_data)
             else:
@@ -513,30 +533,26 @@ class yaEntry(yaBase):
         
         """
         super(self.__class__, self)._parse(resource_data)
-        original_tag = '{%s}original' % NAMESPACES['y']
-        meta_tag = '{%s}meta' % NAMESPACES['y']
         
-        access_property = '{%s}access' % NAMESPACES['y']
-        
-        if access_property in self.__dict__:
-            self.access = self.__dict__[access_property]
-            del(self.__dict__[access_property])
+        if 'access' in self.__dict__:
+            self.access = self.__dict__['access']
+            del(self.__dict__['access'])
         else:
             self.access = 'public'
             
-        if '{%s}comments-disabled' % NAMESPACES['y'] in self.__dict__:
-            del(self.__dict__['{%s}comments-disabled' % NAMESPACES['y']])
+        if 'comments-disabled' in self.__dict__:
+            del(self.__dict__['comments-disabled'])
             self.comments_disabled = True
         else:
             self.comments_disabled = False
                 
         del(self.__dict__['category'])
         
-        if meta_tag in self.__dict__:
-            del(self.__dict__[meta_tag])
-        if original_tag in self.__dict__:
-            self.original = self.__dict__[original_tag]
-            del(self.__dict__[original_tag])
+        if 'meta' in self.__dict__:
+            # TODO: Нужна обратка метаданных
+            del(self.__dict__['meta'])
+        if 'original' in self.__dict__:
+            self.original = self.__dict__['original']
         else:
             self.original = None
         
@@ -561,9 +577,10 @@ class yaEntry(yaBase):
         
         if self.comments_disabled:
             etree.SubElement(xml, ns_y+'comments-disabled')
-            
-#        for category in self.categories:
-#            etree.SubElement(xml, ns_a+'category', term=category, scheme='https://api-yaru.yandex.ru/person/незнаем/tag')
+        
+        # FIXME: API не дает невозможности угадать uid в схеме
+        #for category in self.categories:
+        #    etree.SubElement(xml, ns_a+'category', term=category, scheme='https://api-yaru.yandex.ru/person/{uid}/tag')
         
         for property_name, property_value in self:
             if isinstance(property_value, basestring):
@@ -663,7 +680,10 @@ class yaResource(object):
         
         """
         url = self.url
-        headers = { 'User-Agent': 'pyyaru %s' % '.'.join(map(str, VERSION)) }
+        headers = { 
+            'User-Agent': 'pyyaru %s' % '.'.join(map(str, VERSION)),
+            # TODO: Скоро потребуется Content-type для PUT и POST 
+            }
         if ACCESS_TOKEN is not None:
             headers.update({ 'Authorization': 'OAuth '+ACCESS_TOKEN })
         
