@@ -79,6 +79,14 @@ class yaInternalServerError(yaError):
     """Внутрення ошибка на сервере, предоставляющем ресурс."""
     pass
 
+class yaResourceNotFoundError(yaError):
+    """Ошибка отсутствия запрошенного ресурса."""
+    pass
+
+class yaBadRequestError(yaError):
+    """Ошибка в запросе к серверу."""
+    pass
+
 
 class Logger(object):
     """Класс логирования."""
@@ -668,14 +676,19 @@ class yaResource(object):
         
         successful = False
        
-        if data is not None and response.status == 400:
-            self.__logger.error(' Bad request. Check it up for malformed data\n%s\n%s\n%s.' % ('-----'*4, data, '____'*25))
-            
-        if response.status == 500:
-            self.__logger.error(' Internal server error occured while opening %s with %s.' % (url, headers))
-            raise yaInternalServerError('Internal server error occured while opening %s with %s.' % (url, headers))
-        
-        if 200 <= response.status <300:
+        if response.status == 400:
+            error_text = 'Bad request. Check it up for malformed data\n%s\n%s\n%s.' % ('-----'*4, data, '____'*25)
+            self.__logger.error(' '+error_text)
+            raise yaBadRequestError(error_text)
+        elif response.status == 404:
+            error_text = 'Requested resource "%s" is not found.' % url
+            self.__logger.error(' '+error_text)
+            raise yaResourceNotFoundError(error_text)
+        elif response.status == 500:
+            error_text = 'Internal server error occured while opening %s with %s.' % (url, headers)
+            self.__logger.error(' '+error_text)
+            raise yaInternalServerError(error_text)
+        elif 200 <= response.status <300:
             successful = True
         
         if resource_data is not None:
