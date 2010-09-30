@@ -220,11 +220,11 @@ class yaBase(object):
         data = self._compose()
         
         if self.id is None:
-            resource_data = yaResource(target_url).create(data)
+            resource_data = yaResource(target_url).create(data, self._content_type)
             if not resource_data[2]:
                 raise yaOperationError('Unable to create resource at "%s".' % target_url)
         else:
-            resource_data = yaResource(self.links['edit']).update(data)
+            resource_data = yaResource(self.links['edit']).update(data, self._content_type)
             if not resource_data[2]:
                 raise yaOperationError('Unable to update resource at "%s".' % self.links['edit'])
             
@@ -316,6 +316,8 @@ class yaCollection(yaBase):
 class yaPerson(yaBase):
     """Класс описывает ресурс пользователя Я.ру (профиль)."""
 
+    _content_type = 'application/x-yaru+xml; type=person;'
+
     def change_name(self, new_name):
         """Смена имени пользователя. Под капотом происходит создание
         новой записи типа 'rename'.
@@ -379,11 +381,13 @@ class yaPersons(yaCollection):
     Свойство objects является списком.
     
     """
-    pass
+    _content_type = 'application/x-yaru+xml; type=persons;'
 
 
 class yaClub(yaBase):
     """Класс описывает ресурс клуба."""
+    
+    _content_type = 'application/x-yaru+xml; type=club;'
     
     def add_news(self, news_text):
         """Публикация новости клуба. Под капотом происходит создание
@@ -421,13 +425,15 @@ class yaClubs(yaCollection):
     Свойство objects является списком.
     
     """
-    pass
+    _content_type = 'application/x-yaru+xml; type=clubs;'
 
 
 class yaEntry(yaBase):
     """Класс описывает ресурс сообщения (публикации)."""
     
     __logger = Logger()
+
+    _content_type = 'application/atom+xml; type=entry;'
     
     _TYPES = [
         # Записи
@@ -549,7 +555,7 @@ class yaEntry(yaBase):
         del(self.__dict__['category'])
         
         if 'meta' in self.__dict__:
-            # TODO: Нужна обратка метаданных
+            # TODO: Нужна обработка метаданных
             del(self.__dict__['meta'])
         if 'original' in self.__dict__:
             self.original = self.__dict__['original']
@@ -601,6 +607,9 @@ class yaEntries(yaCollection):
     Свойство objects является списком.
     
     """
+    
+    _content_type = 'application/atom+xml;'
+    
     def __init__(self, id, by_type='ANY', **kwargs):
         """Метод перекрывает родительский для возможности указания
         типа данных yaEntry.
@@ -663,7 +672,7 @@ class yaResource(object):
         return response
         
         
-    def __open_url(self, data=None, request_method="GET"):
+    def __open_url(self, data=None, request_method="GET", content_type=None):
         """Открывает URL, опционально используя токен авторизации.
         
         Реализована упрощенная схема, без взаимодействия с OAuth-сервером.
@@ -680,10 +689,11 @@ class yaResource(object):
         
         """
         url = self.url
-        headers = { 
-            'User-Agent': 'pyyaru %s' % '.'.join(map(str, VERSION)),
-            # TODO: Скоро потребуется Content-type для PUT и POST 
-            }
+        headers = { 'User-Agent': 'pyyaru %s' % '.'.join(map(str, VERSION)) }
+        
+        if content_type is not None:
+            headers['Content-Type'] = '%s charset=utf-8' % content_type
+        
         if ACCESS_TOKEN is not None:
             headers.update({ 'Authorization': 'OAuth '+ACCESS_TOKEN })
         
@@ -737,17 +747,17 @@ class yaResource(object):
         """Забирает данные ресурса."""
         return self.__open_url()
     
-    def create(self, data):
+    def create(self, data, content_type):
         """Отсылает запрос на создание ресурса."""
-        return self.__open_url(data, "POST")
+        return self.__open_url(data, "POST", content_type)
     
     def delete(self):
         """Отсылает запрос на удаление ресурса."""
         return self.__open_url(request_method="DELETE")
 
-    def update(self, data):
+    def update(self, data, content_type):
         """Отсылает запрос на модификацию ресурса."""
-        return self.__open_url(data, "PUT")
+        return self.__open_url(data, "PUT", content_type)
     
     def get_object(self):
         """Забирает данные ресура и, по возможности, преобразует ресурс
