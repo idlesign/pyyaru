@@ -28,6 +28,18 @@
 
     person.set_status("Yeap, that's me from pyyaru.")
 
+Пробежимся по всем публикациям пользователя типа ссылка (link)::
+
+    person_entries = person.entries('link')
+    for entry in person_entries.iter():
+        print entry.title
+
+Узнаем, для каких клубов пользователь является модератором::
+
+    moderated_clubs = person.clubs('moderator')
+    for club in moderated_clubs.iter():
+        print club.name
+
 
 .. _class-yaperson:
 

@@ -23,8 +23,9 @@ pyyaru — это Python-интерфейс для API блог-сервиса y
 .. toctree::
    :maxdepth: 2
 
-   yaentry.rst
    yaperson.rst
+   yaentry.rst
+   yaclub.rst
 
 Коллекции
 ---------

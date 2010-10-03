@@ -33,6 +33,8 @@
     for entry in my_entries.iter():
         print entry.title
 
+Функция *len()*, примененная к объекту-коллекции вернёт количество вложенных объектов, уже полученных с сервера (см. методы *more()* и *iter()*).
+
 
 .. _class-yaentries:
 

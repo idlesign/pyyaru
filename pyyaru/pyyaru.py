@@ -38,7 +38,7 @@ NAMESPACES = {
 
 ACCESS_TOKEN = None
 
-# Если в директории бибилиотеки лежит файл token и ACCESS_TOKEN не задан,
+# Если в директории библиотеки лежит файл token и ACCESS_TOKEN не задан,
 # то берем реквизиты из файла.
 token_filepath = '%s/token' % os.path.dirname(os.path.realpath(__file__))
 if os.path.exists(token_filepath) and ACCESS_TOKEN is None:
@@ -71,6 +71,11 @@ class yaEntryAccessUnknownError(yaError):
     pass
 
 
+class yaPersonInclubRoleUnkwnownError(yaError):
+    """Ошибка неопознанной роли пользователя в клубе (yaPerson)."""
+    pass
+
+
 class yaOperationError(yaError):
     """Ошибка действия, произведённого над ресурсом."""
     pass
@@ -93,6 +98,11 @@ class yaResourceNotFoundError(yaError):
 
 class yaBadRequestError(yaError):
     """Ошибка в запросе к серверу."""
+    pass
+
+
+class yaAccessForbiddenError(yaError):
+    """Ошибка уровня доступа к данным."""
     pass
 
 
@@ -254,6 +264,8 @@ class yaCollection(yaBase):
 
     """
 
+    objects = []
+
     def _parse(self, resource_data):
         """Для получения списка объектов дополняем механизм разбора xml, определенный
         в супер-классе yaBase.
@@ -261,7 +273,6 @@ class yaCollection(yaBase):
         """
         super(yaCollection, self)._parse(resource_data)
         root = etree.fromstring(resource_data[1])
-        self.objects = []
         ns = 'y'
         tagname = self._type.rstrip('s')
         if self._type == 'entries':
@@ -276,6 +287,10 @@ class yaCollection(yaBase):
 
         if tagname in self.__dict__:
             del(self.__dict__[tagname])
+
+    def __len__(self):
+        """Возвращает количество вложенных объектов (содержащихся в self.objects)."""
+        return len(self.objects)
 
     def save(self):
         """Для коллекций метод не поддерживается."""
@@ -324,15 +339,16 @@ class yaPerson(yaBase):
     """Класс описывает ресурс пользователя Я.ру (профиль)."""
 
     _content_type = 'application/x-yaru+xml; type=person;'
+    _inclub_roles = ['member', 'moderator', 'owner']
 
     def change_name(self, new_name):
         """Смена имени пользователя. Под капотом происходит создание
         новой записи типа 'rename'.
 
         """
-        raise NotImplementedError('This one is not yet implemented.')
+        raise NotImplementedError('This method is not yet implemented.')
 
-    def set_status(self, status, access='public'):
+    def set_status(self, status, access='public', comments_disabled=False):
         """Смена настроения. Под капотом происходит создание
         новой записи типа 'status'.
 
@@ -340,8 +356,9 @@ class yaPerson(yaBase):
         entry = yaEntry(
             attributes={
                 'type': 'status',
-                'access': access,
                 'content': status,
+                'access': access,
+                'comments_disabled': comments_disabled,
             }
             ).save(self.links['posts'])
 
@@ -352,18 +369,37 @@ class yaPerson(yaBase):
         новой записи типа 'friend'.
 
         """
-        raise NotImplementedError('This one is not yet implemented.')
+        raise NotImplementedError('This method is not yet implemented.')
 
     def unfriend(self, whom, entry_text='', access='public', comments_disabled=False):
         """Раздружиться. Под капотом происходит создание
         новой записи типа 'unfriend'.
 
         """
-        raise NotImplementedError('This one is not yet implemented.')
+        raise NotImplementedError('This method is not yet implemented.')
+
+    def clubs(self, where_role='member'):
+        """Запрашивает с сервера клубы, к которым пользователь имеет отношение,
+        и возвращает их в виде объекта-контейнера yaClubs.
+        Параметр where_role задаёт фильтр роли пользователя в клубе.
+        Возможные значения: 'member', 'moderator', 'owner'.
+
+        """
+        if not where_role in self._inclub_roles:
+            raise yaPersonInclubRoleUnkwnownError('Supplied role "%s" is unknown. Valid choices: %s.' % (where_role, self._inclub_roles))
+
+        return yaClubs(self.links[where_role + '_of_clubs']).get()
+
+    def friends(self):
+        """Запрашивает с сервера друзей пользователя и возвращает их
+        в виде объекта-контейнера yaPersons.
+
+        """
+        return yaPersons(self.links['friends']).get()
 
     def entries(self, by_type='ANY'):
         """Запрашивает с сервера публикации пользователя и возвращает их
-        в виде объекта yaEntries.
+        в виде объекта-контейнера yaEntries.
         Параметр by_type позволяет запросить публикации определенного типа
         (см. список _TYPES класса yaEntry).
 
@@ -372,7 +408,7 @@ class yaPerson(yaBase):
 
     def friends_entries(self, by_type='ANY'):
         """Запрашивает с сервера публикации друзей пользователя и возвращает их
-        в виде объекта yaEntries.
+        в виде объекта-контейнера yaEntries.
         Параметр by_type позволяет запросить публикации определенного типа
         (см. список _TYPES класса yaEntry).
 
@@ -401,28 +437,44 @@ class yaClub(yaBase):
         новой записи типа 'news'.
 
         """
-        raise NotImplementedError('This one is not yet implemented.')
+        raise NotImplementedError('This method is not yet implemented.')
 
     def set_rules(self, rules):
         """Публикация правил клуба. Под капотом происходит создание
         новой записи типа 'rules'.
 
         """
-        raise NotImplementedError('This one is not yet implemented.')
+        raise NotImplementedError('This method is not yet implemented.')
 
     def join(self):
         """Вступление в клуб. Под капотом происходит создание
         новой записи типа 'join'.
 
         """
-        raise NotImplementedError('This one is not yet implemented.')
+        raise NotImplementedError('This method is not yet implemented.')
 
     def leave(self):
         """Уход из клуба. Под капотом происходит создание
         новой записи типа 'unjoin'.
 
         """
-        raise NotImplementedError('This one is not yet implemented.')
+        raise NotImplementedError('This method is not yet implemented.')
+
+    def entries(self, by_type='ANY'):
+        """Запрашивает с сервера публикации клуба и возвращает их
+        в виде объекта-контейнера yaEntries.
+        Параметр by_type позволяет запросить публикации определенного типа
+        (см. список _TYPES класса yaEntry).
+
+        """
+        return yaEntries(self.links['posts'], by_type).get()
+
+    def members(self):
+        """Запрашивает с сервера членов клуба и возвращает их
+        в виде объекта-контейнера yaPersons.
+
+        """
+        return yaPersons(self.links['club_members']).get()
 
 
 class yaClubs(yaCollection):
@@ -472,10 +524,10 @@ class yaEntry(yaBase):
         'rules',            # Правила
         'join',             # Присоединиться к клубу
         'unjoin',           # Уйти из клуба
+        'description',      # Описание клуба
         # Прочее
         'activity_fotki',   # Не используется
         'activity_video',   # Не используется
-        'description',      # ?
         'offline',          # Не используется. Куда все идут.
         'opinion',          # ?
         'premoderated',     # ?
@@ -723,6 +775,10 @@ class yaResource(object):
             error_text = 'Bad request. Check it up for malformed data\n%s\n%s\n%s.' % ('-----' * 4, data, '____' * 25)
             self.__logger.error(' ' + error_text)
             raise yaBadRequestError(error_text)
+        if response.status == 403:
+            error_text = 'Access to "%s" is forbidden.' % url
+            self.__logger.error(' ' + error_text)
+            raise yaAccessForbiddenError(error_text)
         elif response.status == 404:
             error_text = 'Requested resource "%s" is not found.' % url
             self.__logger.error(' ' + error_text)
@@ -743,7 +799,7 @@ class yaResource(object):
             for ctype_data in response.getheader('Content-Type').split(';'):
                 type_index = ctype_data.rfind('type')
                 if type_index > -1:
-                    resource_type = ctype_data[type_index + 5]
+                    resource_type = ctype_data[type_index + 5:]
 
             resource_data = (resource_type, resource_data, successful)
 

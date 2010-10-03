@@ -16,7 +16,7 @@
 Сообщение, которое приведёт к смене настроения, можно также опубликовать, создав новый объект типа *yaEntry* и передав в его конструктор свойства сообщения (атрибуты)::
 
     status_entry = pyyaru.yaEntry(
-        attributes = {
+        attributes={
             'type': 'status',
             'access': 'public',
             'content': "Yeap, that's me from pyyaru.", 
@@ -29,7 +29,7 @@
 Создадим новую запись в дневнике с запретом на её комментирование::
 
     nocomment_entry = pyyaru.yaEntry(
-        attributes = {
+        attributes={
             'type': 'text',
             'access': 'public',
             'title': 'Запись с отключенными комментариями',
@@ -41,8 +41,8 @@
 
 .. _class-yaentry:
 
-Класс yaEntry
--------------
+yaEntry
+-------
 
 .. autoclass:: pyyaru.pyyaru.yaEntry
     :members:
