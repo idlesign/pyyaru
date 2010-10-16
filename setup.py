@@ -1,5 +1,5 @@
 import os
-from setuptools import setup, find_packages
+from setuptools import setup
 from pyyaru import VERSION
 
 f = open(os.path.join(os.path.dirname(__file__), 'README'))
@@ -14,7 +14,10 @@ setup(
     author="Igor 'idle sign' Starikov",
     author_email='idlesign@yandex.ru',
     url='http://github.com/idlesign/pyyaru',
-    packages=find_packages(),
+    packages=['pyyaru'],
+    include_package_data=True,
+    install_requires=['setuptools'],
+    zip_safe=False,
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Web Environment',
