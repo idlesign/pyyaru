@@ -27,6 +27,10 @@ class yaPersonCheck(unittest.TestCase):
     def setUp(self):
         self.person = pyyaru.yaPerson(resource_url_person).get()
 
+    def test_geitem(self):
+        """Проверка возможности доступа к свойстам объекта в нотации self[key]."""
+        self.assertEqual(self.person['id'], 'urn:ya.ru:person/96845657')
+
     def test_id_isset(self):
         """Запись первого параметра конструктора в свойство id."""
         person = pyyaru.yaPerson(resource_urn_person)

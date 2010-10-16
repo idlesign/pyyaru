@@ -341,6 +341,17 @@ class yaPerson(yaBase):
     _content_type = 'application/x-yaru+xml; type=person;'
     _inclub_roles = ['member', 'moderator', 'owner']
 
+    def __getitem__(self, key):
+        """Разрешает обращение к свойствам объекта в нотации self[key].
+        Для максимальной похожести обращения к yaPerson с обращением
+        к свойству author вложенных объектов yaEntries.
+
+        """
+        try:
+            return self.__dict__[key]
+        except KeyError as e:
+            raise AttributeError(e)
+
     def change_name(self, new_name):
         """Смена имени пользователя. Под капотом происходит создание
         новой записи типа 'rename'.
@@ -743,7 +754,7 @@ class yaResource(object):
         Полученный файл (token) можно положить рядом с pyyaru.py, в таком случае
         реквизиты будут взяты из него автоматически.
 
-        Вернёт кортеж из типа ресурса, полученных с него данных, либо None.
+        Вернёт кортеж из типа ресурса, полученных с него данных и флага успешности запроса, либо None.
 
         """
         url = self.url
