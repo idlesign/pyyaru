@@ -122,6 +122,16 @@ class yaBaseCheck(unittest.TestCase):
 
 class yaEntryCheck(unittest.TestCase):
 
+    def test_html_escape(self):
+        """Проверка исправности эскейпа HTML для помещения в XML."""
+        entry = pyyaru.yaEntry()
+        self.assertEqual(entry._html_escape('<p>Html Paragraph</p>'), '&lt;p>Html Paragraph&lt;/p>')
+
+    def test_html_unescape(self):
+        """Проверка исправности анэскейпа HTML, изымаемого из XML."""
+        entry = pyyaru.yaEntry()
+        self.assertEqual(entry._html_unescape('&lt;a href="http://somehost.com/?bingo=1&amp;bongo=2">Link&lt;/a>'), '<a href="http://somehost.com/?bingo=1&bongo=2">Link</a>')
+
     def test_access_property(self):
         """Проверка существования свойства access."""
         entry = pyyaru.yaEntry(resource_url_entry).get()

@@ -641,6 +641,11 @@ class yaEntry(yaBase):
             else:
                 self.__dict__['categories'].append(category.attrib['term'])
 
+        if 'content' not in self.__dict__ or self.content is None:
+            self.content = ''
+        else:
+            self.content = self._html_unescape(self.content)
+
     def _compose(self):
         """Компонует xml-документ для публикации на ресурсе."""
 
@@ -660,6 +665,8 @@ class yaEntry(yaBase):
 
         for property_name, property_value in self:
             if isinstance(property_value, basestring):
+                if property_name == 'content':
+                    property_value = self._html_escape(property_value)
                 property_value = unicode(property_value)
                 etree.SubElement(xml, ns_a + property_name).text = property_value
 
@@ -667,6 +674,14 @@ class yaEntry(yaBase):
         self.__logger.debug('Composed XML:\n%s\n%s%s' % ('-----' * 4, xml, '____' * 25))
 
         return xml
+
+    def _html_escape(self, html):
+        """Готовит HTML для помещения в XML."""
+        return html.replace('<', '&lt;')
+
+    def _html_unescape(self, text):
+        """Восстанавливает HTML из XML."""
+        return text.replace('&amp;', '&').replace('&lt;', '<')
 
 
 class yaEntries(yaCollection):
