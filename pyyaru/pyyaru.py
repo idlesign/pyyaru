@@ -32,7 +32,7 @@ URN_TYPES = {
 
 NAMESPACES = {
     'a': 'http://www.w3.org/2005/Atom',
-    'y': 'yandex:data',  # TODO: Скоро будет http://api.yandex.ru/yaru/
+    'y': 'http://api.yandex.ru/yaru/',
     'thr': 'http://purl.org/syndication/thread/1.0',
 }
 
@@ -238,22 +238,27 @@ class yaBase(object):
 
         if self.id is None:
             resource_data = yaResource(target_url).create(data, self._content_type)
-            if not resource_data[2]:
+            if resource_data[2] == False:
                 raise yaOperationError('Unable to create resource at "%s".' % target_url)
         else:
             resource_data = yaResource(self.links['edit']).update(data, self._content_type)
-            if not resource_data[2]:
+            if resource_data[2] == False:
                 raise yaOperationError('Unable to update resource at "%s".' % self.links['edit'])
 
         if resource_data is not None and resource_data[2]:
             self._parse(resource_data)
 
     def delete(self):
-        """Используется для удаления ресурса."""
+        """Используется для удаления ресурса.
+        В случае удачного свершения свойство id объекта становится равным None.
+
+        """
         if self.id is not None:
             resource_data = yaResource(self.links['edit']).delete()
-            if not resource_data[2]:
+            if resource_data[2] == False:
                 raise yaOperationError('Unable to delete resource at "%s".' % self.links['edit'])
+            else:
+                self.id = None
 
 
 class yaCollection(yaBase):

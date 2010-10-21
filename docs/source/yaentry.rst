@@ -38,6 +38,9 @@
         }
         ).save(person.links['posts'])
 
+А теперь удалим эту запись за ненадобностью::
+
+    nocomment_entry.delete()
 
 .. _class-yaentry:
 

@@ -57,7 +57,10 @@ class yaPersonCheck(unittest.TestCase):
         self.assertEqual(person.id, resource_urn_person)
 
     def test_me_resource(self):
-        """Загрузка профиля с ресурса /me/. Требует авторизации."""
+        """Загрузка профиля с ресурса /me/.
+        Требует авторизации.
+
+        """
         person = pyyaru.yaPerson(resource_uri_me).get()
         self.assertNotEqual(person.id, resource_uri_me)
 
@@ -172,11 +175,30 @@ class yaEntryCheck(unittest.TestCase):
         self.assertRaises(pyyaru.yaEntryAccessUnknownError, pyyaru.yaEntry, attributes={'access': 'me-and-my-kitten'})
 
     def test_init_properties(self):
-        """Проверка инициализации свойств несвязанного объяекта."""
+        """Проверка инициализации свойств несвязанного объекта."""
         entry = pyyaru.yaEntry()
         self.assertEqual(entry.access, 'private')
         self.assertEqual(entry.comments_disabled, False)
         self.assertEqual(entry.type, 'text')
+
+    def test_create_delete(self):
+        """Проверка создания и удаления публикации.
+        Требует авторизации.
+
+        """
+        me = pyyaru.yaPerson(resource_uri_me).get()
+        entry = pyyaru.yaEntry(
+            attributes={
+                'type': 'text',
+                'title': 'Тестовый заголовок из pyyaru',
+                'content': 'Это сообщение является тестовым.',
+                'access': 'private',
+                'comments_disabled': True,
+            }
+            ).save(me.links['posts'])
+        self.assertNotEqual(entry.id, None)
+        entry.delete()
+        self.assertEqual(entry.id, None)
 
 
 class yaCollectionCheck(unittest.TestCase):
