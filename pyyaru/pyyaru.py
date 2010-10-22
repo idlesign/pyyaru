@@ -233,7 +233,10 @@ class yaBase(object):
         return self
 
     def save(self, target_url=None):
-        """Используется для создания нового ресурса, либо обновляния имеющегося."""
+        """Используется для создания нового ресурса, либо обновляния имеющегося.
+        В случае удачного свершения свойство вернёт объект.
+
+        """
         data = self._compose()
 
         if self.id is None:
@@ -248,9 +251,11 @@ class yaBase(object):
         if resource_data is not None and resource_data[2]:
             self._parse(resource_data)
 
+        return self
+
     def delete(self):
         """Используется для удаления ресурса.
-        В случае удачного свершения свойство id объекта становится равным None.
+        В случае удачного свершения вертнёр объект, свойство id является None.
 
         """
         if self.id is not None:
@@ -259,6 +264,8 @@ class yaBase(object):
                 raise yaOperationError('Unable to delete resource at "%s".' % self.links['edit'])
             else:
                 self.id = None
+
+        return self
 
 
 class yaCollection(yaBase):
