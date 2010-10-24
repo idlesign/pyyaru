@@ -650,9 +650,6 @@ class yaEntry(yaBase):
 
         del(self.__dict__['category'])
 
-        if 'meta' in self.__dict__:
-            # TODO: Нужна обработка метаданных
-            del(self.__dict__['meta'])
         if 'original' in self.__dict__:
             self.original = self.__dict__['original']
         else:
