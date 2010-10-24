@@ -19,6 +19,23 @@
     for member in club_members.iter():
         print entry.name
 
+.. _yaperson-publish_entry:
+
+Опубликуем сообщение в клубе::
+
+    entry = pyyaru.yaEntry(
+            attributes={
+                'type': 'text',
+                'title': 'Сообщение в клубе из pyyaru',
+                'content': 'Это сообщение является тестовым.',
+            }
+            )
+    entry = club.publish_entry(entry)
+
+А теперь удалим его за ненадобностью::
+
+    entry.delete()
+
 
 .. _class-yaclub:
 

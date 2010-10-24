@@ -98,6 +98,10 @@ class yaPersonCheck(unittest.TestCase):
         person_friends_entries = self.person.friends_entries()
         self.assertNotEqual(len(person_friends_entries), 0)
 
+    def test_publish_entry_object_check(self):
+        """Проверка типа объекта, переданного в publish_entry()."""
+        self.assertRaises(pyyaru.yaError, self.person.publish_entry, 'notanentry')
+
 
 class yaClubCheck(unittest.TestCase):
 
@@ -113,6 +117,10 @@ class yaClubCheck(unittest.TestCase):
         """Получение списка членов клуба."""
         club_members = self.club.members()
         self.assertNotEqual(len(club_members), 0)
+
+    def test_publish_entry_object_check(self):
+        """Проверка типа объекта, переданного в publish_entry()."""
+        self.assertRaises(pyyaru.yaError, self.club.publish_entry, 'notanentry')
 
 
 class yaBaseCheck(unittest.TestCase):

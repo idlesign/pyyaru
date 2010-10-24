@@ -41,6 +41,8 @@
 А теперь удалим эту запись за ненадобностью::
 
     nocomment_entry.delete()
+    
+Сообщения можно публиковать из объектов типа :ref:`yaPerson <_yaperson-publish_entry>` и `yaClub <_yaclub-publish_entry>`, используя метод publish_entry.
 
 .. _class-yaentry:
 

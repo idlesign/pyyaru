@@ -371,6 +371,13 @@ class yaPerson(yaBase):
         """
         raise NotImplementedError('This method is not yet implemented.')
 
+    def publish_entry(self, entry):
+        """Публикует указанный объект yaEntry в дневнике пользователя."""
+        if isinstance(entry, yaEntry):
+            return entry.save(self.links['posts'])
+        else:
+            raise yaError('Entry parameter is not an object of yaEntry type.')
+
     def set_status(self, status, access='public', comments_disabled=False):
         """Смена настроения. Под капотом происходит создание
         новой записи типа 'status'.
@@ -383,9 +390,9 @@ class yaPerson(yaBase):
                 'access': access,
                 'comments_disabled': comments_disabled,
             }
-            ).save(self.links['posts'])
+            )
 
-        return entry
+        return self.publish_entry(entry)
 
     def friend(self, whom, entry_text='', access='public', comments_disabled=False):
         """Подружиться. Под капотом происходит создание
@@ -454,6 +461,13 @@ class yaClub(yaBase):
     """Класс описывает ресурс клуба."""
 
     _content_type = 'application/x-yaru+xml; type=club;'
+
+    def publish_entry(self, entry):
+        """Публикует указанный объект yaEntry в клубе."""
+        if isinstance(entry, yaEntry):
+            return entry.save(self.links['posts'])
+        else:
+            raise yaError('Entry parameter is not an object of yaEntry type.')
 
     def add_news(self, news_text):
         """Публикация новости клуба. Под капотом происходит создание

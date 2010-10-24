@@ -28,6 +28,24 @@
 
     person.set_status("Yeap, that's me from pyyaru.")
 
+.. _yaperson-publish_entry:
+
+Создадим и опубликуем новую запись::
+
+    entry = pyyaru.yaEntry(
+            attributes={
+                'type': 'text',
+                'title': 'Сообщение из pyyaru',
+                'content': 'Это сообщение является тестовым.',
+                'access': 'private',
+            }
+            )
+    entry = person.publish_entry(entry)
+
+Это сообщение оригинальностью не блещет и никому кроме вас не видно ('access': 'private'), поэтому удалим его за ненадобностью::
+
+    entry.delete()
+
 Пробежимся по всем публикациям пользователя типа ссылка (link)::
 
     person_entries = person.entries('link')
