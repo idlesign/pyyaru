@@ -58,6 +58,22 @@
     for club in moderated_clubs.iter():
         print club.name
 
+Заведём дружбу с пользователем с идентификатором urn:ya.ru:person/153990::
+
+    person.friend('urn:ya.ru:person/153990', 'Я буду дружить с этим человеком.')
+
+А теперь внезапно поссоримся::
+
+    person.unfriend('urn:ya.ru:person/153990', 'А с виду и не скажешь %)')
+
+Запишемся в клуб https://api-yaru.yandex.ru/club/4611686018427439760/::
+
+    person.join_club('https://api-yaru.yandex.ru/club/4611686018427439760/', 'И я с вами!')
+
+Покинем тот же клуб::
+
+    person.leave_club('https://api-yaru.yandex.ru/club/4611686018427439760/', 'У них скучно.')
+
 
 .. _class-yaperson:
 

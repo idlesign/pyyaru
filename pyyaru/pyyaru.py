@@ -394,19 +394,79 @@ class yaPerson(yaBase):
 
         return self.publish_entry(entry)
 
+    def _make_related_entry(self, resource_type, target, action, entry_text, access, comments_disabled):
+        """Формирует и пытается создать новую запись заданного типа,
+        описывающую отношение между объектами (ресурсами),
+        н.п. вступление пользователя в клуб (пользователь-клуб), начало
+        дружбы (пользователь-пользователь) и т.д.
+
+        """
+        cl = globals()[URN_TYPES[resource_type]]
+
+        target_id = target
+
+        if isinstance(target, cl):
+            target_id = target.id
+
+        if not target_id.startswith('%s%s' % (URN_PREFIX, resource_type)):
+            target = cl(target_id).get()
+            target_id = target.id
+
+        entry = yaEntry(
+            attributes={
+                'type': action,
+                'content': entry_text,
+                'access': access,
+                'comments_disabled': comments_disabled,
+                'meta': {resource_type: {'id': target_id}}
+            }
+            )
+
+        return self.publish_entry(entry)
+
     def friend(self, whom, entry_text='', access='public', comments_disabled=False):
         """Подружиться. Под капотом происходит создание
         новой записи типа 'friend'.
 
+        -- whom - может содержать идентификатор пользователя,
+                  с которым заводится дружба, URL ресурса этого пользователя,
+                  либо объект yaPerson
+
         """
-        raise NotImplementedError('This method is not yet implemented.')
+        return self._make_related_entry('person', whom, 'friend', entry_text, access, comments_disabled)
 
     def unfriend(self, whom, entry_text='', access='public', comments_disabled=False):
         """Раздружиться. Под капотом происходит создание
         новой записи типа 'unfriend'.
 
+        -- whom - может содержать идентификатор пользователя,
+                  с которым нужно перестать дружить, URL ресурса этого пользователя,
+                  либо объект yaPerson
+
         """
-        raise NotImplementedError('This method is not yet implemented.')
+        return self._make_related_entry('person', whom, 'unfriend', entry_text, access, comments_disabled)
+
+    def join_club(self, club, entry_text='', access='public', comments_disabled=False):
+        """Вступить в клуб. Под капотом происходит создание
+        новой записи типа 'join'.
+
+        -- club - может содержать идентификатор клуба,
+                  в который нужно вступить, URL ресурса этого клуба,
+                  либо объект yaClub
+
+        """
+        return self._make_related_entry('club', club, 'join', entry_text, access, comments_disabled)
+
+    def leave_club(self, club, entry_text='', access='public', comments_disabled=False):
+        """Покинуть клуб. Под капотом происходит создание
+        новой записи типа 'unjoin'.
+
+        -- club - может содержать идентификатор клуба,
+                  из которого нужно уйти, URL ресурса этого клуба,
+                  либо объект yaClub
+
+        """
+        return self._make_related_entry('club', club, 'unjoin', entry_text, access, comments_disabled)
 
     def clubs(self, where_role='member'):
         """Запрашивает с сервера клубы, к которым пользователь имеет отношение,
@@ -483,19 +543,21 @@ class yaClub(yaBase):
         """
         raise NotImplementedError('This method is not yet implemented.')
 
-    def join(self):
-        """Вступление в клуб. Под капотом происходит создание
-        новой записи типа 'join'.
+    def join(self, entry_text='', access='public', comments_disabled=False):
+        """Вступление в клуб. Под капотом происходит обращение
+        к ресурсу /me/ и создание новой записи типа 'join'.
 
         """
-        raise NotImplementedError('This method is not yet implemented.')
+        me = yaPerson('/me/').get()
+        me.join_club(self, entry_text, access, comments_disabled)
 
-    def leave(self):
-        """Уход из клуба. Под капотом происходит создание
-        новой записи типа 'unjoin'.
+    def leave(self, entry_text='', access='public', comments_disabled=False):
+        """Уход из клуба. Под капотом происходит обращение
+        к ресурсу /me/ и создание новой записи типа 'unjoin'.
 
         """
-        raise NotImplementedError('This method is not yet implemented.')
+        me = yaPerson('/me/').get()
+        me.leave_club(self, entry_text, access, comments_disabled)
 
     def entries(self, by_type='ANY'):
         """Запрашивает с сервера публикации клуба и возвращает их
@@ -669,6 +731,16 @@ class yaEntry(yaBase):
         else:
             self.content = self._html_unescape(self.content)
 
+    def _compose_recursion(self, root, namespace, property_name, property_value):
+        """Рекурсивно собирает ветку xml документа на основе данных словаря."""
+        if isinstance(property_value, basestring):
+            property_value = unicode(property_value)
+            etree.SubElement(root, namespace + property_name).text = property_value
+        elif isinstance(property_value, dict):
+            xml = etree.SubElement(root, namespace + property_name)
+            for element in property_value:
+                self._compose_recursion(xml, namespace, element, property_value[element])
+
     def _compose(self):
         """Компонует xml-документ для публикации на ресурсе."""
 
@@ -692,6 +764,9 @@ class yaEntry(yaBase):
                     property_value = self._html_escape(property_value)
                 property_value = unicode(property_value)
                 etree.SubElement(xml, ns_a + property_name).text = property_value
+            elif isinstance(property_value, dict):
+                if property_name == 'meta':  # Словари с метаданными обрабатываем рекурсивно
+                    self._compose_recursion(xml, ns_y, property_name, property_value)
 
         xml = etree.tostring(xml, encoding='utf-8', pretty_print=True, xml_declaration=True)
         self.__logger.debug('Composed XML:\n%s\n%s%s' % ('-----' * 4, xml, '____' * 25))

@@ -102,6 +102,26 @@ class yaPersonCheck(unittest.TestCase):
         """Проверка типа объекта, переданного в publish_entry()."""
         self.assertRaises(pyyaru.yaError, self.person.publish_entry, 'notanentry')
 
+    def test_friend_errors(self):
+        """Проверка испускания ошибок для метода friend()."""
+        self.assertRaises(pyyaru.yaResourceNotFoundError, self.person.friend, 'notaresource')
+        self.assertRaises(pyyaru.yaObjectTypeMismatchError, self.person.friend, resource_url_club)
+
+    def test_unfriend_errors(self):
+        """Проверка испускания ошибок для метода unfriend()."""
+        self.assertRaises(pyyaru.yaResourceNotFoundError, self.person.unfriend, 'notaresource')
+        self.assertRaises(pyyaru.yaObjectTypeMismatchError, self.person.unfriend, resource_url_club)
+
+    def test_join_club_errors(self):
+        """Проверка испускания ошибок для метода join_club()."""
+        self.assertRaises(pyyaru.yaResourceNotFoundError, self.person.join_club, 'notaresource')
+        self.assertRaises(pyyaru.yaObjectTypeMismatchError, self.person.join_club, resource_url_person)
+
+    def test_leave_club_errors(self):
+        """Проверка испускания ошибок для метода leave_club()."""
+        self.assertRaises(pyyaru.yaResourceNotFoundError, self.person.leave_club, 'notaresource')
+        self.assertRaises(pyyaru.yaObjectTypeMismatchError, self.person.leave_club, resource_url_person)
+
 
 class yaClubCheck(unittest.TestCase):
 

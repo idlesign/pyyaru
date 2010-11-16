@@ -19,7 +19,11 @@
     for member in club_members.iter():
         print entry.name
 
-.. _yaperson-publish_entry:
+Вступим в клуб::
+
+    club.join('Теперь и я в этом клубе!')
+
+.. _yaclub-publish_entry:
 
 Опубликуем сообщение в клубе::
 
@@ -35,6 +39,10 @@
 А теперь удалим его за ненадобностью::
 
     entry.delete()
+
+Покинем клуб::
+
+    club.leave('Был я в этом вашем клубе. Ничего интересного.')
 
 
 .. _class-yaclub:
