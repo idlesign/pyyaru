@@ -36,3 +36,5 @@ http://github.com/idlesign/pyyaru
 Документация к библиотеке в формате reStructuredText находится в директории docs/.
 Для сборки документации используйте команду 'make <форматсборки>' (требует python-sphinx).
 
+Желающие могут воспользоваться документацией с ресурса ReadTheDocs - http://readthedocs.org/docs/pyyaru/en/latest/
+
