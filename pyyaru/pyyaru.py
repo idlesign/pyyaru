@@ -603,6 +603,7 @@ class yaEntry(yaBase):
         'poll',             # Опрос
         'wishlist',         # Желание
         'congratulation',   # Поздравление
+        'description',      # Обращение к гостям
         # Яндекс.Ответы
         'question',         # Задать вопрос
         'answer',           # Ответить на вопрос
@@ -616,14 +617,14 @@ class yaEntry(yaBase):
         'shop_opinion',     # Отзыв о магазине
         # Пользователь
         'status',           # Изменить настроение
-        'userpic',          # Аватар
+        'userpic',          # Изменить аватар
         'rename',           # Изменить имя
         # Клуб
         'news',             # Новость
         'rules',            # Правила
         'join',             # Присоединиться к клубу
         'unjoin',           # Уйти из клуба
-        'description',      # Описание клуба
+
         # Прочее
         'activity_fotki',   # Не используется
         'activity_video',   # Не используется
@@ -754,7 +755,7 @@ class yaEntry(yaBase):
         if self.comments_disabled:
             etree.SubElement(xml, ns_y + 'comments-disabled')
 
-        # FIXME: API не дает невозможности угадать uid в схеме
+        # FIXME: API не даёт возможности угадать uid в схеме
         #for category in self.categories:
         #    etree.SubElement(xml, ns_a+'category', term=category, scheme='https://api-yaru.yandex.ru/person/{uid}/tag')
 
@@ -762,7 +763,7 @@ class yaEntry(yaBase):
             if isinstance(property_value, basestring):
                 if property_name == 'content':
                     property_value = self._html_escape(property_value)
-                property_value = unicode(property_value)
+                property_value = unicode(property_value.decode('utf-8'))
                 etree.SubElement(xml, ns_a + property_name).text = property_value
             elif isinstance(property_value, dict):
                 if property_name == 'meta':  # Словари с метаданными обрабатываем рекурсивно
@@ -827,7 +828,7 @@ class yaResource(object):
 
         resource_name = resource_name.lstrip('/')
         url = resource_name
-        if not resource_name.startswith(API_SERVER):
+        if not resource_name.startswith('http'):
             if resource_name.startswith(URN_PREFIX):
                 url = '%s/resource/?id=%s' % (API_SERVER, resource_name)
             else:
