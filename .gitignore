@@ -1,7 +1,5 @@
 *.pyc
-.project
-.pydevproject
-.settings
+.idea
 token
 docs/build/*
 !.gitignore
