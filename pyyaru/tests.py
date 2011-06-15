@@ -10,6 +10,7 @@ resource_uri_me = '/me/'
 
 resource_urn_person = 'urn:ya.ru:person/96845657'
 resource_url_person = 'https://api-yaru.yandex.ru/person/96845657/'
+resource_url_person_idle = 'https://api-yaru.yandex.ru/person/153990/'
 resource_url_persons = 'https://api-yaru.yandex.ru/person/96845657/friend/'
 
 resource_urn_entry = 'urn:ya.ru:post/153990/219'
@@ -21,15 +22,14 @@ resource_urn_club = 'urn:ya.ru:club/4611686018427439760'
 resource_url_club = 'https://api-yaru.yandex.ru/club/4611686018427439760/'
 resource_url_clubs = 'https://api-yaru.yandex.ru/person/96845657/club/'
 
+PERSON_FIXTURE = pyyaru.yaPerson(resource_url_person).get()
+CLUB_FIXTURE = pyyaru.yaClub(resource_url_club).get()
 
 class yaPersonCheck(unittest.TestCase):
 
-    def setUp(self):
-        self.person = pyyaru.yaPerson(resource_url_person).get()
-
     def test_geitem(self):
         """Проверка возможности доступа к свойстам объекта в нотации self[key]."""
-        self.assertEqual(self.person['id'], 'urn:ya.ru:person/96845657')
+        self.assertEqual(PERSON_FIXTURE['id'], 'urn:ya.ru:person/96845657')
 
     def test_id_isset(self):
         """Запись первого параметра конструктора в свойство id."""
@@ -76,71 +76,67 @@ class yaPersonCheck(unittest.TestCase):
 
     def test_error_rolemismatch(self):
         """Крушение в случае неопознанной роли пользователя в клубе."""
-        self.assertRaises(pyyaru.yaPersonInclubRoleUnkwnownError, self.person.clubs, 'mine')
+        self.assertRaises(pyyaru.yaPersonInclubRoleUnkwnownError, PERSON_FIXTURE.clubs, 'mine')
 
     def test_clubs(self):
         """Получение списка клубов пользователя."""
-        clubs = self.person.clubs()
+        clubs = PERSON_FIXTURE.clubs()
         self.assertNotEqual(len(clubs), 0)
 
     def test_friends(self):
         """Получение списка друзей пользователя."""
-        friends = self.person.friends()
+        friends = PERSON_FIXTURE.friends()
         self.assertNotEqual(len(friends), 0)
 
     def test_entries(self):
         """Получение списка публикаций пользователя."""
-        person_entries = self.person.entries()
+        person_entries = PERSON_FIXTURE.entries()
         self.assertNotEqual(len(person_entries), 0)
 
     def test_friends_entries(self):
         """Получение списка публикаций друзей пользователя."""
-        person_friends_entries = self.person.friends_entries()
+        person_friends_entries = PERSON_FIXTURE.friends_entries()
         self.assertNotEqual(len(person_friends_entries), 0)
 
     def test_publish_entry_object_check(self):
         """Проверка типа объекта, переданного в publish_entry()."""
-        self.assertRaises(pyyaru.yaError, self.person.publish_entry, 'notanentry')
+        self.assertRaises(pyyaru.yaError, PERSON_FIXTURE.publish_entry, 'notanentry')
 
     def test_friend_errors(self):
         """Проверка испускания ошибок для метода friend()."""
-        self.assertRaises(pyyaru.yaResourceNotFoundError, self.person.friend, 'notaresource')
-        self.assertRaises(pyyaru.yaObjectTypeMismatchError, self.person.friend, resource_url_club)
+        self.assertRaises(pyyaru.yaResourceNotFoundError, PERSON_FIXTURE.friend, 'notaresource')
+        self.assertRaises(pyyaru.yaObjectTypeMismatchError, PERSON_FIXTURE.friend, resource_url_club)
 
     def test_unfriend_errors(self):
         """Проверка испускания ошибок для метода unfriend()."""
-        self.assertRaises(pyyaru.yaResourceNotFoundError, self.person.unfriend, 'notaresource')
-        self.assertRaises(pyyaru.yaObjectTypeMismatchError, self.person.unfriend, resource_url_club)
+        self.assertRaises(pyyaru.yaResourceNotFoundError, PERSON_FIXTURE.unfriend, 'notaresource')
+        self.assertRaises(pyyaru.yaObjectTypeMismatchError, PERSON_FIXTURE.unfriend, resource_url_club)
 
     def test_join_club_errors(self):
         """Проверка испускания ошибок для метода join_club()."""
-        self.assertRaises(pyyaru.yaResourceNotFoundError, self.person.join_club, 'notaresource')
-        self.assertRaises(pyyaru.yaObjectTypeMismatchError, self.person.join_club, resource_url_person)
+        self.assertRaises(pyyaru.yaResourceNotFoundError, PERSON_FIXTURE.join_club, 'notaresource')
+        self.assertRaises(pyyaru.yaObjectTypeMismatchError, PERSON_FIXTURE.join_club, resource_url_person)
 
     def test_leave_club_errors(self):
         """Проверка испускания ошибок для метода leave_club()."""
-        self.assertRaises(pyyaru.yaResourceNotFoundError, self.person.leave_club, 'notaresource')
-        self.assertRaises(pyyaru.yaObjectTypeMismatchError, self.person.leave_club, resource_url_person)
-
+        self.assertRaises(pyyaru.yaResourceNotFoundError, PERSON_FIXTURE.leave_club, 'notaresource')
+        self.assertRaises(pyyaru.yaObjectTypeMismatchError, PERSON_FIXTURE.leave_club, resource_url_person)
 
 class yaClubCheck(unittest.TestCase):
 
-    def setUp(self):
-        self.club = pyyaru.yaClub(resource_url_club).get()
-
     def test_entries(self):
         """Получение списка публикаций клуба."""
-        club_entries = self.club.entries()
+        club_entries = CLUB_FIXTURE.entries()
         self.assertNotEqual(len(club_entries), 0)
 
     def test_members(self):
         """Получение списка членов клуба."""
-        club_members = self.club.members()
+        club_members = CLUB_FIXTURE.members()
         self.assertNotEqual(len(club_members), 0)
 
     def test_publish_entry_object_check(self):
         """Проверка типа объекта, переданного в publish_entry()."""
-        self.assertRaises(pyyaru.yaError, self.club.publish_entry, 'notanentry')
+        self.assertRaises(pyyaru.yaError, CLUB_FIXTURE.publish_entry, 'notanentry')
 
 
 class yaBaseCheck(unittest.TestCase):
