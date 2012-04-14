@@ -255,12 +255,16 @@ class yaBase(object):
 
     def delete(self):
         """Используется для удаления ресурса.
-        В случае удачного свершения вертнёр объект, свойство id является None.
+        В случае удачного свершения вернёт объект с полем id выставленным в None.
 
         """
         if self.id is not None:
-            resource_data = yaResource(self.links['edit']).delete()
-            if resource_data[2] == False:
+            try:
+                resource_data = yaResource(self.links['edit']).delete()
+            except KeyError:
+                raise yaOperationError('Unable to delete resource: edit resource link is undefined.')
+
+            if not resource_data[2]:
                 raise yaOperationError('Unable to delete resource at "%s".' % self.links['edit'])
             else:
                 self.id = None
@@ -650,6 +654,19 @@ class yaEntry(yaBase):
         """
         super(self.__class__, self).__init__(id, **kwargs)
 
+    def make_comment(self, entry_content, entry_type='text', access='public', comments_disabled=False):
+        """Добавляет комментарий указанного типа к текущей записи."""
+        entry = yaEntry(
+            attributes={
+                'type': entry_type,
+                'content': entry_content,
+                'access': access,
+                'comments_disabled': comments_disabled,
+            }
+        )
+        entry.save(self.links['comments'])
+        return entry
+
     def _set_type(self, entry_type):
         """Устанавливает тип записи, сверяясь со списком разрешенных типов."""
         if entry_type in self._TYPES:
@@ -711,14 +728,18 @@ class yaEntry(yaBase):
         else:
             self.comments_disabled = False
 
-        del(self.__dict__['category'])
+        try:
+            del(self.__dict__['category'])
+        except KeyError:
+            pass
 
         if 'original' in self.__dict__:
             self.original = self.__dict__['original']
         else:
             self.original = None
 
-        self.__dict__['updated'] = datetime.datetime.strptime(self.__dict__['updated'], '%Y-%m-%dT%H:%M:%SZ')
+        if self.__dict__.get('updated') is not None:
+            self.__dict__['updated'] = datetime.datetime.strptime(self.__dict__['updated'], '%Y-%m-%dT%H:%M:%SZ')
         root = etree.fromstring(resource_data[1])
         self.__dict__['categories'] = []
         for category in root.xpath('/*/a:category', namespaces=NAMESPACES):

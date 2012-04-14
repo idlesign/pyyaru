@@ -205,6 +205,12 @@ class yaEntryCheck(unittest.TestCase):
         self.assertEqual(entry.comments_disabled, False)
         self.assertEqual(entry.type, 'text')
 
+    def test_make_comment(self):
+        """Проверка создания комментария."""
+        entry = pyyaru.yaEntry(resource_url_entry)
+        content = 'pyyaru test comment'
+        my_comment = entry.make_comment(content)
+
     def test_create_delete(self):
         """Проверка создания и удаления публикации.
         Требует авторизации.
