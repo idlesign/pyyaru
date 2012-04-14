@@ -38,8 +38,8 @@ NAMESPACES = {
 
 ACCESS_TOKEN = None
 
-# Если в директории библиотеки лежит файл token и ACCESS_TOKEN не задан,
-# то берем реквизиты из файла.
+# Если в директории библиотеки лежит файл token в формате JSON, полученный
+# в ходе авторизации OAuth 2 и ACCESS_TOKEN не задан, то берем реквизиты из этого файла.
 token_filepath = '%s/token' % os.path.dirname(os.path.realpath(__file__))
 if os.path.exists(token_filepath) and ACCESS_TOKEN is None:
     token_file = open(token_filepath, 'rb')
@@ -241,11 +241,11 @@ class yaBase(object):
 
         if self.id is None:
             resource_data = yaResource(target_url).create(data, self._content_type)
-            if resource_data[2] == False:
+            if not resource_data[2]:
                 raise yaOperationError('Unable to create resource at "%s".' % target_url)
         else:
             resource_data = yaResource(self.links['edit']).update(data, self._content_type)
-            if resource_data[2] == False:
+            if not resource_data[2]:
                 raise yaOperationError('Unable to update resource at "%s".' % self.links['edit'])
 
         if resource_data is not None and resource_data[2]:
@@ -913,7 +913,8 @@ class yaResource(object):
             resource_data = response.read()
             connection.close()
         except httplib.HTTPException as e:
-            self.__logger.error(' Failed to open "%s".\n Error: "%s"' % (url, e))
+            self.__logger.error('Failed to open "%s".\n Error: "%s"' % (url, e))
+            raise
 
         successful = False
 
@@ -930,7 +931,7 @@ class yaResource(object):
             self.__logger.error(' ' + error_text)
             raise yaResourceNotFoundError(error_text)
         elif response.status == 500:
-            error_text = 'Internal server error occured while opening %s with %s.' % (url, headers)
+            error_text = 'Internal server error occurred while opening %s with %s.' % (url, headers)
             self.__logger.error(' ' + error_text)
             raise yaInternalServerError(error_text)
         elif 200 <= response.status < 300:
@@ -957,15 +958,15 @@ class yaResource(object):
 
     def create(self, data, content_type):
         """Отсылает запрос на создание ресурса."""
-        return self.__open_url(data, "POST", content_type)
+        return self.__open_url(data, 'POST', content_type)
 
     def delete(self):
         """Отсылает запрос на удаление ресурса."""
-        return self.__open_url(request_method="DELETE")
+        return self.__open_url(request_method='DELETE')
 
     def update(self, data, content_type):
         """Отсылает запрос на модификацию ресурса."""
-        return self.__open_url(data, "PUT", content_type)
+        return self.__open_url(data, 'PUT', content_type)
 
     def get_object(self):
         """Забирает данные ресура и, по возможности, преобразует ресурс
@@ -982,7 +983,7 @@ class yaResource(object):
                 self.__logger.debug('Resource type "%s" is a valid resource. Now spawning the appropriate object "%s".' % (resource_type, URN_TYPES[resource_type]))
                 obj = globals()[URN_TYPES[resource_type]](None)
                 obj._parse(resource_data)
-            elif resource_type == None:
+            elif resource_type is None:
                 self.__logger.warning('Resource type is none')
             else:
                 self.__logger.error('Resource type "%s" is unknown' % resource_type)
