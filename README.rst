@@ -1,7 +1,9 @@
-
 pyyaru — Python-интерфейс для API блог-сервиса ya.ru
 ====================================================
 http://github.com/idlesign/pyyaru
+
+.. image:: https://pypip.in/d/pyyaru/badge.png
+        :target: https://crate.io/packages/pyyaru
 
 Интерфейс можно использвать для написания собственных Я.ру-клиентов.
 
